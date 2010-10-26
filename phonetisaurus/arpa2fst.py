@@ -5,10 +5,12 @@ class Arpa2WFST( ):
     """
        Class to convert an ARPA-format LM to WFST format.
        
-       NOTE: This class is hard-wired to the 3-gram case, and 
-             does not perform special handling of missing back-off
+       NOTE: This class will convert arbitrary length n-gram models, but
+             it does not perform special handling of missing back-off
              weights except in the case of the </s> (sentence-end) 
              marker.
+       NOTE: If your model contains '-' as a regular symbol, make sure you
+             change the eps symbol - or you will be in for a world of hurt!
     """
 
     def __init__( self, arpaifile, arpaofile, eps="-", max_order=4 ):
@@ -53,78 +55,9 @@ class Arpa2WFST( ):
         arc = "%s\t%s\t%s\t%s\t%f\n" % (istate, ostate, isym, osym, self.to_tropical(weight))
         return arc
 
-    def arpa2fst_orig( self ):
-        """
-           Convert a 3-gram ARPA-format LM to WFST format.
-        """
-
-        arpa_ifp = open(self.arpaifile, "r")
-        arpa_ofp = open(self.arpaofile, "w")
-        arpa_ofp.write(self.make_arc( "<start>", "<s>", "<s>", "<s>", 0.0 ))
-        for line in arpa_ifp:
-            line = line.strip()
-            #Process based on n-gram order
-            if self.order>0 and not line=="" and not line.startswith("\\"):
-                parts = re.split(r"\s+",line)
-                if self.order==1:
-                    if parts[1]=="</s>":
-                        arpa_ofp.write( self.make_arc( self.eps, "</s>", "</s>", "</s>", parts[0] ) )
-                    elif parts[1]=="<s>":
-                        arpa_ofp.write( self.make_arc( "<s>", self.eps, self.eps, self.eps, parts[2] ) )
-                    elif len(parts)==3:
-                        arpa_ofp.write( self.make_arc( parts[1], self.eps, self.eps, self.eps, parts[2] ) )
-                        p,g = parts[1].split(":")
-                        arpa_ofp.write( self.make_arc( self.eps, parts[1], g, p, parts[0] ) )
-                    else:
-                        pass
-                elif self.order==2:
-                    if parts[2]=="</s>":
-                        arpa_ofp.write( self.make_arc( parts[1], parts[2], parts[2], parts[2], parts[0] ) )
-                    elif len(parts)==4:
-                        arpa_ofp.write( self.make_arc( "%s,%s"%(parts[1],parts[2]), parts[2], self.eps, self.eps, parts[3] ) )
-                        p,g = parts[2].split(":")
-                        arpa_ofp.write( self.make_arc( parts[1], "%s,%s"%(parts[1],parts[2]), g, p, parts[0] ) )
-                    else:
-                        pass
-                elif self.order==3:
-                    #if parts[3]=="</s>":
-                    #    arpa_ofp.write( self.make_arc( "%s,%s"%(parts[1],parts[2]), parts[3], parts[3], parts[3], parts[0] ) )
-                    #else:
-                    #    p,g = parts[3].split(":")
-                    #    arpa_ofp.write( self.make_arc( "%s,%s"%(parts[1],parts[2]), "%s,%s"%(parts[2],parts[3]), g, p, parts[0] ) )
-                    if parts[3]=="</s>":
-                        arpa_ofp.write( self.make_arc( "%s,%s"%(parts[1],parts[2]), parts[3], parts[3], parts[3], parts[0] ) )
-                    elif len(parts)==5:
-                        arpa_ofp.write( self.make_arc( "%s,%s,%s"%(parts[1],parts[2],parts[3]), "%s,%s"%(parts[2],parts[3]), self.eps, self.eps, parts[4] ) )
-                        p,g = parts[3].split(":")
-                        arpa_ofp.write( self.make_arc( "%s,%s"%(parts[1],parts[2]), "%s,%s,%s"%(parts[1],parts[2],parts[3]), g, p, parts[0] ) )
-                elif self.order==4:
-                    if parts[4]=="</s>":
-                        arpa_ofp.write( self.make_arc( "%s,%s,%s"%(parts[1],parts[2],parts[3]), parts[4], parts[4], parts[4], parts[0] ) )
-                    else:
-                        p,g = parts[4].split(":")
-                        arpa_ofp.write( self.make_arc( "%s,%s,%s"%(parts[1],parts[2],parts[3]), "%s,%s,%s"%(parts[2],parts[3],parts[4]), g, p, parts[0] ) )
-                else:
-                    pass
-            #Check the current n-gram order
-            if line.startswith("ngram"):
-                pass
-            elif line.startswith("\\1-grams:"):
-                self.order = 1
-            elif line.startswith("\\2-grams:"):
-                self.order = 2
-            elif line.startswith("\\3-grams:"):
-                self.order = 3
-            elif line.startswith("\\4-grams:"):
-                self.order = 4
-        arpa_ifp.close()
-        arpa_ofp.write("</s>\n")
-        arpa_ofp.close()
-        return
-
     def arpa2fst( self ):
         """
-           Convert a 3-gram ARPA-format LM to WFST format.
+           Convert an arbitrary length ARPA-format n-gram LM to WFST format.
         """
 
         arpa_ifp = open(self.arpaifile, "r")
