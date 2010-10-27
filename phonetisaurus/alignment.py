@@ -190,10 +190,10 @@ class basicGapAligner( ):
                     self.trace[i][j] = [ m3, i-1, j ]
         return
 
-def generate_s2o( dicfile, eq=True ):
-    """                                                                                                                                                                                           
-       Initialize a new state-to-observation matrix.                                                                                                                                              
-       This relates phonemes to graphemes based on counts.                                                                                                                                        
+def generate_s2o( dicfile, eq=True, penalty_type="logodds" ):
+    """
+       Initialize a new state-to-observation matrix. 
+       This relates phonemes to graphemes based on counts. 
     """
 
     dp = open(dicfile,"r")
@@ -235,14 +235,20 @@ def generate_s2o( dicfile, eq=True ):
     for ph in s2o:
         for gr in s2o[ph]:
             if gr=="total": continue
-            #compute the log-odds scores for the transitions
-            m_ij = s2o[ph][gr] / s2o[ph]["total"]
-            p_j  = s2o[ph]["total"] / total
-            s2o[ph][gr] = math.log(m_ij/p_j)
+            if penalty_type=="logodds":
+                #compute the log-odds scores for the transitions
+                m_ij = s2o[ph][gr] / s2o[ph]["total"]
+                p_j  = s2o[ph]["total"] / total
+                s2o[ph][gr] = math.log(m_ij/p_j)
+            else:
+                #compute probability scores
+                m_ij = s2o[ph][gr] / s2o[ph]["total"]
+                s2o[ph][gr] = m_ij
             
     return s2o, pairs, skipped
 
 def align_pairs( s2o, pairs, gp=-.7 ):
+    """Perform alignment on a dictionary."""
     gp = probGapAligner( s2o, gap_penalty=-2.0 )
     aligned_pairs = []
     for pair in pairs:
@@ -262,46 +268,53 @@ def align_pairs( s2o, pairs, gp=-.7 ):
     return aligned_pairs
 
 def print_dic( pairs, filename ):
+    """Print an intermediate dictionary."""
     fp = open(filename,"w")
     for pair in pairs:
         fp.write( "%s\t%s\n" % ("".join(pair[1])," ".join(pair[0])) )
     fp.close()
     return
 
-def iterative_alignment( basefile ):
-    """Perform an iterative alignment of the dictionary."""
-
+def iterative_alignment( basefile, root="./", basename="aligned" ):
+    """
+       Perform an iterative alignment of the dictionary.
+       
+       NOTE: At present this is set heuristically, however
+             it should really employ a convergence criterion.
+       TODO: Implement convergence criterion.
+    """
     print "Iteration 1. Only equal length pairs..."
     s2o, pairs, skipped = generate_s2o( basefile, eq=True)
     aligned_pairs = align_pairs( s2o, pairs, gp=0.02 )
     aligned_pairs.extend( skipped )
-    print_dic(aligned_pairs,"aligned-v1.dic")
+    print_dic(aligned_pairs, root+basename+"-v1.dic")
     print "Iteration 2. Only equal length pairs..."
-    s2o, pairs, skipped = generate_s2o( "aligned-v1.dic", eq=True)
+    s2o, pairs, skipped = generate_s2o( root+basename+"-v1.dic", eq=True)
     aligned_pairs = align_pairs( s2o, pairs )
     aligned_pairs.extend( skipped )
-    print_dic(aligned_pairs,"aligned-v2.dic")
+    print_dic(aligned_pairs, root+basename+"-v2.dic")
     print "Iteration 3..."
-    s2o, pairs, skipped = generate_s2o( "aligned-v2.dic", eq=False)
+    s2o, pairs, skipped = generate_s2o( root+basename+"-v2.dic", eq=False)
     aligned_pairs = align_pairs( s2o, pairs, gp=-.3 )
     aligned_pairs.extend( skipped )
-    print_dic(aligned_pairs,"aligned-v3.dic")
+    print_dic(aligned_pairs, root+basename+"-v3.dic")
     print "Iteration 4..."
-    s2o, pairs, skipped = generate_s2o( "aligned-v3.dic", eq=False)
+    s2o, pairs, skipped = generate_s2o( root+basename+"-v3.dic", eq=False)
     aligned_pairs = align_pairs( s2o, pairs )
     aligned_pairs.extend( skipped )
-    print_dic(aligned_pairs,"aligned-v4.dic")
+    print_dic(aligned_pairs, root+basename+"-v4.dic")
     print "Iteration 5..."
-    s2o, pairs, skipped = generate_s2o( "aligned-v4.dic", eq=False)
+    s2o, pairs, skipped = generate_s2o( root+basename+"-v4.dic", eq=False)
     aligned_pairs = align_pairs( s2o, pairs, gp=-1.0 )
     aligned_pairs.extend( skipped )
-    print_dic(aligned_pairs,"aligned-v5.dic")
-    return "aligned-v4.dic"
+    print_dic(aligned_pairs, root+basename+"-v5.dic")
+    
+    return root+basename+"-v5.dic"
 
 def generate_joint_corpus( aligned_dic ):
     """Generate a joint model for LM setup."""
     fp = open(aligned_dic,"r")
-    op = open("aligned_corpus.txt","w")
+    op = open("models/aligned_corpus.txt","w")
     for line in fp:
         line = line.strip()
         word, pron = line.split("\t")
@@ -314,30 +327,8 @@ def generate_joint_corpus( aligned_dic ):
 
 
 if __name__=="__main__":
-    import sys, pprint
+    import sys, argparse
 
-    dic_file = iterative_alignment( sys.argv[1] )
+    dic_file = iterative_alignment( sys.argv[1], root="models/" )
     generate_joint_corpus( dic_file )
 
-    x = """gp = probGapAligner( sys.argv[2] )
-    fp = open(sys.argv[1],"r")
-    for line in fp:
-        if line.find("DH")>-1: continue
-        if line.find("3")>-1: continue
-        if line.find("4")>-1: continue
-        if line.find("9")>-1: continue
-        if line.find("&")>-1: continue
-        if line.find("1")>-1: continue
-        if line.find("2")>-1: continue
-        line = line.strip()
-        word,pron = line.split("\t")
-        seq1 = pron.split(); seq1.insert(0,"");
-        seq2 = list(word);   seq2.insert(0,"");
-        gp.seq1 = seq1
-        gp.seq2 = seq2
-        gp.trace = gp._init_trace( len(seq1), len(seq2) )
-        gp.gap_align()
-        gp.traceback(len(seq1)-1,len(seq2)-1)
-        gp.dic_print()
-        gp.score = gp.trace[-1][-1][0]
-        gp.aligned = []"""
