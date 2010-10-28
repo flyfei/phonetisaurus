@@ -10,10 +10,9 @@ class nbestPhoneticizer():
        Reads in the OpenFST-format WFST pronunciation model
        and generate novel pronunciations based on user input.
     """
-    def __init__( self, fstmodel, isyms, osyms, m2m=False ):
+    def __init__( self, fstmodel, isyms, m2m=False ):
         self.fstmodel = fstmodel
         self.isyms    = isyms
-        self.osyms    = osyms
         self.m2m      = m2m
         self.results = {}
         self.wfst = {}
@@ -44,9 +43,8 @@ class nbestPhoneticizer():
                      fstcompose - %s | 
                      fstproject --project_output=true | 
                      fstshortestpath --nshortest=%s - | 
-                     fstsynchronize - | 
-                     fstrmepsilon - | 
-                     fstprint --isymbols=%s --acceptor=true""" % ( self.word_fst, self.isyms, self.fstmodel, n, self.osyms )
+                     fstrmepsilon - |
+                     fstprint --acceptor=true""" % ( self.word_fst, self.isyms, self.fstmodel, str(n) )
         command = command.replace("\n","").replace("\$","\n")
         self.command_output = commands.getoutput( command )
         return
@@ -84,24 +82,14 @@ class nbestPhoneticizer():
         self.word_fst += "%d\$"%(state+1)
         self.word_fst += "\$".join(arcs)
 
-        #graphs = list(word)
-        #state = 1
-        #self.word_fst += "0 1 <s>\$"
-        #for gr in graphs:
-        #    self.word_fst += "%d %d %s\$"%(state, state+1, gr) 
-        #    state += 1
-        #self.word_fst += "%d %d </s>\$" % (state, state+1) 
-        #self.word_fst += "%d\$"%(state+1)
-
         command = """echo "%s" | 
                      fstcompile --acceptor=true --isymbols=%s | 
                      fstarcsort --sort_type=ilabel |
                      fstcompose - %s | 
                      fstproject --project_output=true | 
                      fstshortestpath --nshortest=%s - | 
-                     fstsynchronize - | 
-                     fstrmepsilon - | 
-                     fstprint --isymbols=%s --acceptor=true""" % ( self.word_fst, self.isyms, self.fstmodel, n, self.osyms )
+                     fstrmepsilon - |
+                     fstprint --acceptor=true""" % ( self.word_fst, self.isyms, self.fstmodel, str(n))
         command = command.replace("\n","").replace("\$","\n")
         self.command_output = commands.getoutput( command )
         return
@@ -162,6 +150,7 @@ class nbestPhoneticizer():
             pron = item[0].replace("_","").replace("<s>","").replace("</s>","")
             pron = pron.strip()
             pron = re.sub(r"\s+"," ",pron)
+            pron = pron.replace("&"," ")
             hypotheses.append("%.5f\t%s" % (item[1],pron))
         return hypotheses
 
@@ -193,17 +182,15 @@ if __name__=="__main__":
     parser.add_argument('--nbest',   "-n", type=int, default=10, help='Maximum number of alternative hypotheses to produce.', required=False)
     parser.add_argument('--model',   "-m", help='OpenFST-based WFST pronunciation model.', required=True)
     parser.add_argument('--isyms',   "-i", help='WFST Input symbols.', required=True)
-    parser.add_argument('--osyms',   "-o", help='WFST Output symbols.', required=True)
+    parser.add_argument('--m2m',     "-u", help="Use multi-2-multi alignment.", default=False, action="store_true" )
     args = parser.parse_args()
 
-    phon = nbestPhoneticizer( args.model, args.isyms, args.osyms )
+    phon = nbestPhoneticizer( args.model, args.isyms, m2m=True )
     if args.word and not args.file:
         results = phon.phoneticize_word( args.word, n=args.nbest )
         for result in results:
             print result
     elif args.file and not args.word:
         results = phon.phoneticize_list( args.file, n=args.nbest )
-        #for result in results:
-        #    print "%s\t\t%s"%(result[0], result[1])
     else:
         print "Please supply exactly one of --file or --word"

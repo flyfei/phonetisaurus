@@ -39,7 +39,7 @@ class Arpa2WFST( ):
         """
            Convert values to the tropical semiring.
         """
-        logval = math.log(10.0) * float(val) * -1.0
+        logval = float(val) * -1.0
         return logval
 
     def make_arc( self, istate, ostate, isym, osym, weight=0.0 ):
@@ -78,7 +78,7 @@ class Arpa2WFST( ):
                         p,g = parts[1].split(":")
                         arpa_ofp.write( self.make_arc( self.eps, parts[1], g, p, parts[0] ) )
                     else:
-                        pass
+                        sys.stderr.write("%s\n"%(line))
                 elif self.order<self.max_order:
                     if parts[self.order]=="</s>":
                         arpa_ofp.write( self.make_arc( ",".join(parts[1:self.order]), parts[self.order], parts[self.order], parts[self.order], parts[0] ) )
@@ -87,7 +87,7 @@ class Arpa2WFST( ):
                         p,g = parts[self.order].split(":")
                         arpa_ofp.write( self.make_arc( ",".join(parts[1:self.order]), ",".join(parts[1:self.order+1]), g, p, parts[0] ) )
                     else:
-                        pass
+                        sys.stderr.write("%s\n"%(line))
                 elif self.order==self.max_order:
                     if parts[self.order]=="</s>":
                         arpa_ofp.write( self.make_arc( ",".join(parts[1:self.order]), parts[self.order], parts[self.order], parts[self.order], parts[0] ) )
@@ -118,5 +118,6 @@ if __name__=="__main__":
     arpa.print_syms( arpa.ssyms, sys.argv[2] )
     arpa.print_syms( arpa.isyms, sys.argv[3] )
     arpa.print_syms( arpa.osyms, sys.argv[4] )
-    command = "fstcompile --ssymbols=%s --isymbols=%s --osymbols=%s %s > %s" % ( sys.argv[2], sys.argv[3], sys.argv[4], sys.argv[5], sys.argv[6] )
+    command = "fstcompile --ssymbols=%s --isymbols=%s --keep_osymbols --osymbols=%s %s > %s" % ( sys.argv[2], sys.argv[3], sys.argv[4], sys.argv[5], sys.argv[6] )
+    print command
     os.system(command)
