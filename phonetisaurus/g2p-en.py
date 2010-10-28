@@ -10,10 +10,11 @@ class nbestPhoneticizer():
        Reads in the OpenFST-format WFST pronunciation model
        and generate novel pronunciations based on user input.
     """
-    def __init__( self, fstmodel, isyms, osyms ):
+    def __init__( self, fstmodel, isyms, osyms, m2m=False ):
         self.fstmodel = fstmodel
         self.isyms    = isyms
         self.osyms    = osyms
+        self.m2m      = m2m
         self.results = {}
         self.wfst = {}
         self.word_fst = ""
@@ -40,6 +41,61 @@ class nbestPhoneticizer():
         self.word_fst += "%d\$"%(state+1)
         command = """echo "%s" | 
                      fstcompile --acceptor=true --isymbols=%s | 
+                     fstcompose - %s | 
+                     fstproject --project_output=true | 
+                     fstshortestpath --nshortest=%s - | 
+                     fstsynchronize - | 
+                     fstrmepsilon - | 
+                     fstprint --isymbols=%s --acceptor=true""" % ( self.word_fst, self.isyms, self.fstmodel, n, self.osyms )
+        command = command.replace("\n","").replace("\$","\n")
+        self.command_output = commands.getoutput( command )
+        return
+
+    def gen_m2m2fst( self, word, n=5, cf="models/clusters.list" ):
+        """
+           Generate an FSA for the requested word, given an m2m alignment model.
+        """
+
+        fp = open(cf,"r")
+        clusters = set([])
+        for line in fp:
+            line = line.strip()
+            clusters.add(line)
+        fp.close()
+
+
+        tokens = word[:]
+        arcs = []
+        for i,t in enumerate(tokens):
+            if i==0: continue
+            sub = tokens[i-1]+tokens[i]
+            if sub in clusters:
+                arcs.append( "%d %d %s&%s" % (i, i+2, tokens[i-1], tokens[i]) )
+
+        graphs = list(word)
+        state = 1
+        self.word_fst = ""
+        self.word_fst += "0 1 <s>\$"
+        state = 1
+        for gr in graphs:
+            self.word_fst += "%d %d %s\$"%(state, state+1, gr) 
+            state += 1
+        self.word_fst += "%d %d </s>\$" % (state, state+1) 
+        self.word_fst += "%d\$"%(state+1)
+        self.word_fst += "\$".join(arcs)
+
+        #graphs = list(word)
+        #state = 1
+        #self.word_fst += "0 1 <s>\$"
+        #for gr in graphs:
+        #    self.word_fst += "%d %d %s\$"%(state, state+1, gr) 
+        #    state += 1
+        #self.word_fst += "%d %d </s>\$" % (state, state+1) 
+        #self.word_fst += "%d\$"%(state+1)
+
+        command = """echo "%s" | 
+                     fstcompile --acceptor=true --isymbols=%s | 
+                     fstarcsort --sort_type=ilabel |
                      fstcompose - %s | 
                      fstproject --project_output=true | 
                      fstshortestpath --nshortest=%s - | 
@@ -96,7 +152,10 @@ class nbestPhoneticizer():
 
     def phoneticize_word( self, word, n=10 ):
         """Phoneticize a single word."""
-        self.gen_fst( word, n=n )
+        if self.m2m==True:
+            self.gen_m2m2fst( word, n=n )
+        else:
+            self.gen_fst( word, n=n )
         self.read_nbest( )
         hypotheses = []
         for item in sorted(self.results.iteritems(), key=operator.itemgetter(1)):

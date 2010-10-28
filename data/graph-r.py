@@ -9,9 +9,9 @@ r.plot([2.0,7.0],[0.30,0.75], xlab="n-gram order", ylab="pronunciation WER", typ
 r.title(main="Phonetisaurus performance on NETTALK", lwd=3.0)
 col=["green","blue","red","orange","purple","black","pink","brown","yellow"]
 
-r.lines([2,3,4,5,6,7], [0.700,0.422,0.348, 0.338, 0.329, 0.328], type="l",col=col[0], lty=1, lwd=3.5)
-r.lines([2,3,4,5,6,7], [0.721,0.447,0.373, 0.370, 0.363, 0.367], type="l",col=col[1], lty=2, lwd=3.5)
-
-r.legend("topright", ["manual", "needleman-wunsch"], col=["green","blue"], lty=[1,2], cex=0.9, inset=(0.05,0.05), lwd=3.0, title="Alignment algorithm")
+r.lines([2,3,4,5,6,7], [0.700,0.422,0.348,0.338,0.329,0.328], type="l",col=col[0], lty=1, lwd=3.5)
+r.lines([2,3,4,5,6,7], [0.721,0.447,0.373,0.370,0.363,0.367], type="l",col=col[1], lty=2, lwd=3.5)
+r.lines([2,3,4,5,6,7], [0.617,0.376,0.342,0.331,0.328,0.333], type="l",col=col[2], lty=3, lwd=3.5)
+r.legend("topright", ["manual", "needleman-wunsch", "many-to-many"], col=["green","blue", "purple"], lty=[1,2,3], cex=0.9, inset=(0.05,0.05), lwd=3.0, title="Alignment algorithm")
 r.dev_off()
 os.system('epstopdf '+sys.argv[1])
