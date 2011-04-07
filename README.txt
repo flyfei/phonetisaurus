@@ -2,6 +2,30 @@ Phonetisaurus
 2010-10-27
 Josef Robert Novak
 
+UPDATED: 2011-04-07 Josef R. Novak
+The python 'decoder' is now obsolete.  Use the C++ tool.
+
+Compile:
+$ make
+
+Running the tool:
+$ ./phonetisaurus <clusters> <testlist> <isyms> <model.fst> <osyms> <n-best>
+
+for example,
+$ ./phonetisaurus mymodel.clusters testlist mymodel.isyms mymodel.fst mymodel.osyms 5
+
+Will produce pronunciation (or spelling) hypotheses for each item in 'testlist'.  
+It will produce a maximum of 5 hypotheses for each item.  Depending on the item it
+may produce fewer hypotheses.
+
+
+
+
+
+
+
+
+
 INSTALL
 First, install the following packages, 
 
