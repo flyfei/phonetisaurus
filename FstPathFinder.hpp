@@ -14,6 +14,15 @@ author: chris taylor
 OpenFst forum post title: "Natural code for printing all strings accepted by an FST?"
 OpenFst forum post link: http://openfst.cs.nyu.edu/twiki/bin/view/Forum/FstForum#Natural_code_for_printing_all_st
 
+----------------
+
+2011-04-07: Modified by Josef Novak 
+
+Modified to build a 'paths' object to store the individual paths
+and associated weights, rather than just print them out from 
+inside the class.  Useful if you want to return the paths for further
+processing.
+
 */
 
 #ifndef __FSTPATHFINDER__
