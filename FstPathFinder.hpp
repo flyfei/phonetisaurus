@@ -44,9 +44,22 @@ class FstPathFinder{
 
   enum ProjectionEnum { PROJECT_INPUT, PROJECT_OUTPUT } ;
 
-  void findAllStrings(StdVectorFst& fst, SymbolTable& st, string& seqToSkip, ProjectionEnum printInputOrOutput = PROJECT_OUTPUT);
+  void findAllStrings(
+		      StdVectorFst&  fst, 
+		      SymbolTable&   st, 
+		      string&        seqToSkip, 
+		      ProjectionEnum printInputOrOutput = PROJECT_OUTPUT
+		      );
 
-  void findAllStringsHelper(StdVectorFst& fst, SymbolTable& st, int state, vector<string>& str, TropicalWeight cost, string& seqToSkip, ProjectionEnum printInputOrOutput=PROJECT_OUTPUT); 
+  void findAllStringsHelper( 
+			    StdVectorFst&   fst, 
+			    SymbolTable&    st, 
+			    int             state, 
+			    vector<string>& str, 
+			    TropicalWeight  cost, 
+			    string&         seqToSkip, 
+			    ProjectionEnum  printInputOrOutput = PROJECT_OUTPUT
+			     ); 
 
 }; // end class
 

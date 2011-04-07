@@ -1,8 +1,10 @@
-//2011-04-07 Copyright Josef R. Novak 
-// Some ugly but functional C++ code.
-// Desperately needs refactoring but is nonetheless
-//  about a jillion times better than the python
-//  'decoder' that preceded it!
+/*
+ *  Phonetisaurus.cpp 
+ *  
+ *  Created by Josef Novak on 2011-04-07.
+ *  Copyright 2011 Josef Novak. All rights reserved.
+ *
+ */
 #include <stdio.h>
 #include <string>
 #include <fst/fstlib.h>
@@ -10,157 +12,185 @@
 #include <set>
 #include <algorithm>
 #include "FstPathFinder.hpp"
+#include "Phonetisaurus.hpp"
 
 using namespace fst;
 
-set<string> loadClusters( char* clusterFile ){
-  ifstream clusters_fp;
-  clusters_fp.open(clusterFile);
-  set<string> clusters;
-  string line;
-  if( clusters_fp.is_open() ){
-    while( clusters_fp.good() ){
-      //Read one line
-      getline( clusters_fp, line );
-      if( line.compare("")==0 )
-	continue;
-      clusters.insert(line);
-    }
-    clusters_fp.close();
-  }else{
-    cout << "Couldn't open the file, something went terribly wrong!" << endl;
-  }
-  return clusters;
+Phonetisaurus::Phonetisaurus( ) {
+    //Default constructor
 }
 
-StdVectorFst processEntry( string entry, set<string> clusters, SymbolTable* syms ){
-  StdVectorFst efst;
-  efst.AddState();
-  efst.SetStart(0);
+Phonetisaurus::Phonetisaurus( const char* g2pmodel_file, const char* clusters_file, 
+                             const char* isyms_file, const char* osyms_file ) {
+    //Base constructor.  Load the clusters file, the models and setup shop.
+    eps  = "<eps>";
+    sb   = "<s>";
+    se   = "</s>";
+    skip = "_";
+    tie  = "&";
+    loadClusters( clusters_file );
+    
+    isyms = SymbolTable::ReadText( isyms_file );
 
-  set<string>::iterator it;
-  efst.AddState();
-  efst.AddArc( 0, StdArc(syms->Find("<s>"), syms->Find("<s>"), 0, 1 ));
-  unsigned int i=0;
-  for( i=0; i<entry.size(); i++){
+    osyms = SymbolTable::ReadText( osyms_file );
+
+    g2pmodel = StdVectorFst::Read( g2pmodel_file );
+
+    //We need make sure the g2pmodel is arcsorted
+    ILabelCompare<StdArc> icomp;
+    ArcSort( g2pmodel, icomp );
+}
+
+
+void Phonetisaurus::loadClusters( const char* clusters_file ){
+    /*
+     Load the clusters file containing the list of 
+     subsequences generated during multiple-to-multiple alignment
+    */
+    
+    ifstream clusters_fp;
+    clusters_fp.open( clusters_file );
+    string line;
+    if( clusters_fp.is_open() ){
+        while( clusters_fp.good() ){
+            getline( clusters_fp, line );
+            if( line.compare("")==0 )
+                continue;
+            clusters.insert(line);
+        }
+        clusters_fp.close();
+    }else{
+        cout << "Couldn't open the clusters file!" << endl;
+    }
+    return;
+}
+
+
+StdVectorFst Phonetisaurus::entryToFSA( string entry ){
+    /*
+     Transform an input spelling/pronunciation into an equivalent
+     FSA, adding extra arcs as needed to accomodate clusters.
+    */
+    
+    StdVectorFst efst;
     efst.AddState();
-    string ch = entry.substr(i,1);
-    efst.AddArc( i+1, StdArc(syms->Find(ch), syms->Find(ch), 0, i+2 ));
-    if( i==0 ) continue;
-    string sub = entry.substr(i-1,2);
-    it = clusters.find(sub);
-    if( it!=clusters.end() ){
-      sub.insert(1,"&");
-      efst.AddArc( i, StdArc(syms->Find(sub), syms->Find(sub), 0, i+2));
+    efst.SetStart(0);
+
+    set<string>::iterator it;
+    efst.AddState();
+    efst.AddArc( 0, StdArc( isyms->Find( sb ), isyms->Find( sb ), 0, 1 ));
+    size_t i=0;
+    
+    for( i=0; i<entry.size(); i++){
+        efst.AddState();
+        string ch = entry.substr(i,1);
+        efst.AddArc( i+1, StdArc( isyms->Find(ch), isyms->Find(ch), 0, i+2 ));
+        if( i==0 ) 
+            continue;
+        
+        string sub = entry.substr(i-1,2);
+        it = clusters.find(sub);
+        if( it!=clusters.end() ){
+            sub.insert( 1, tie );
+            efst.AddArc( i, StdArc( isyms->Find(sub), isyms->Find(sub), 0, i+2));
+        }
     }
-  }
-  efst.AddState();
-  efst.AddArc( i+1, StdArc( syms->Find("</s>"), syms->Find("</s>"), 0, i+2));
-  efst.SetFinal(i+2,0);
-  return efst;
+    
+    efst.AddState();
+    efst.AddArc( i+1, StdArc( isyms->Find( se ), isyms->Find( se ), 0, i+2));
+    efst.SetFinal(i+2,0);
+
+    return efst;
 }
 
-void readTestSet( char* testFile, set<string> clusters, SymbolTable* syms, StdVectorFst* model, SymbolTable* osyms, int n ){
-  ifstream test_fp;
-  StdVectorFst efst;
-  test_fp.open(testFile);
-  string line;
-  if( test_fp.is_open() ){
-    while( test_fp.good() ){
-      getline( test_fp, line );
-      if( line.compare("")==0 )
-	continue;
 
-      char* tmpstring = (char *)line.c_str();
-      char *p = strtok(tmpstring, "\t");
-      string word;
-      string pron;
-      int i=0;
-      while (p) {
-	if( i==0 ) 
-	  word = p;
-	else
-	  pron = p;
-	i++;
-	p = strtok(NULL, "\t");
-      }
+vector<PathData> Phonetisaurus::phoneticize( string entry, int nbest ){
+    /*
+     Generate pronunciation/spelling hypotheses for an 
+     input entry.
+    */
+    
+    StdVectorFst result;
+    StdVectorFst shortest;
 
-      StdVectorFst result;
-      efst = processEntry( word, clusters, syms );
-      Compose( efst, *model, &result );
-      StdVectorFst shortest;
-      string seqToSkip = "<eps>";
-      Project(&result, PROJECT_OUTPUT);
-      if( n > 1 ){
-	//We should really be determinizing the result
-	// after removing all the unwanted symbols, otherwise
-	// we cannot guarantee that the paths returned will
-	// actually be unique.  
-	//     R EH D vs. R EH <eps> D vs. R EH _ D
-	// These are all equivalent so we really only 
-	//  want the cheapest version.
-	// What I've done below is just a full-retard hack
-	//  we over-generate the nbest hypotheses and 
-	//  then check for uniqueness as we print.
-	//  this is slow but not as slow as trying to 
-	//  determinize the projected model.
-	ShortestPath( result, &shortest, 5000 );
-      }else{
-	ShortestPath( result, &shortest, n );
-      }
-      
-      FstPathFinder pf;
-      pf.findAllStrings( shortest, *osyms, seqToSkip );
-      set<string> seen;
-      set<string>::iterator sit;
-      int numseen = 0;
-      string thepath;
-      size_t k;
-      for( k=0; k < pf.paths.size(); k++ ){
-	size_t j;
-	for( j=0; j < pf.paths[k].path.size(); j++ ){
-	  if( pf.paths[k].path[j]=="<eps>" || pf.paths[k].path[j]=="-" || pf.paths[k].path[j]=="_" || pf.paths[k].path[j]=="<s>" || pf.paths[k].path[j]=="</s>" )
-	    continue;
-	  if( pf.paths[k].path[j] != "&" )
-	    replace(pf.paths[k].path[j].begin(), pf.paths[k].path[j].end(), '&', ' ');
-	      
-	  thepath += pf.paths[k].path[j];
-	  if( j != pf.paths[k].path.size()-1 )
-	    thepath += " ";
-	}
-	sit = seen.find(thepath);
-	if( sit == seen.end() ){
-	  cout << pf.paths[k].pathcost << "\t" << thepath << "\t" << pron << endl;
-	  seen.insert(thepath);
-	  numseen++;
-	}
-	thepath = "";
-	if( numseen >= n )
-	  break;
-      }
+    StdVectorFst efst = entryToFSA( entry );
+
+    Compose( efst, *g2pmodel, &result );
+
+    Project(&result, PROJECT_OUTPUT);
+
+    if( nbest > 1 ){
+        //This is a cheesy hack. We should really be determinizing the result
+        // after removing all the unwanted symbols, otherwise we cannot guarantee 
+        // that the paths returned will actually be unique.  
+        //We are not doing this because the vanilla LM WFST is not determinization
+        // friendly and the operation may not terminate.
+        ShortestPath( result, &shortest, 5000 );
+    }else{
+        ShortestPath( result, &shortest, 1 );
     }
-    test_fp.close();
-  }else{
-    cout <<"Problem..." << endl;
-  }
-  return;
+
+    FstPathFinder pathfinder;
+    pathfinder.findAllStrings( shortest, *osyms, eps );
+    
+    return pathfinder.paths;
 }
 
-int main( int argc, const char* argv[] ) {
 
-  if( argc<6 ){
-    cout << "./phonetisaurus <clusters> <testlist> <isyms> <model.fst> <osyms> <N-best>" << endl;
-    exit(0);
-  }
-  
-  set<string> clusters = loadClusters( (char *)argv[1] );
-  set<string>::iterator it;
-  SymbolTable *syms   = SymbolTable::ReadText(argv[3]);
-  SymbolTable *osyms  = SymbolTable::ReadText(argv[5]);
-  StdVectorFst *model = StdVectorFst::Read(argv[4]);
-  int n = atoi(argv[6]);
-  ILabelCompare<StdArc> icomp;
-  ArcSort( model, icomp );
-  readTestSet( (char *)argv[2], clusters, syms, model, osyms, n );
-  return 0;
+void Phonetisaurus::printPaths( vector<PathData> paths, int nbest, string correct ){
+    /*
+     Convenience function to print out a path vector.
+     Will print only the first N unique entries.
+    */
+
+    set<string> seen;
+    set<string>::iterator sit;
+    
+    int numseen = 0;
+    string onepath;
+    size_t k;
+    for( k=0; k < paths.size(); k++ ){
+        
+        size_t j;
+        for( j=0; j < paths[k].path.size(); j++ ){
+            
+            if( paths[k].path[j]==eps || paths[k].path[j]=="-" || 
+               paths[k].path[j]==skip || paths[k].path[j]==sb || 
+               paths[k].path[j]==se )
+                continue;
+            
+            if( paths[k].path[j] != tie )
+                replace( paths[k].path[j].begin(), paths[k].path[j].end(), '&', ' ');
+            
+            onepath += paths[k].path[j];
+            
+            if( j != paths[k].path.size()-1 )
+                onepath += " ";
+        }
+        
+        sit = seen.find(onepath);
+        
+        if( sit == seen.end() ){
+            cout << paths[k].pathcost << "\t" << onepath;
+            if( correct != "" )
+                cout << "\t" << correct;
+            cout << endl;
+            seen.insert( onepath );
+            numseen++;
+        }
+        
+        onepath = "";
+        if( numseen >= nbest )
+            break;
+    }
 }
+
+
+
+
+
+
+
+
+
+

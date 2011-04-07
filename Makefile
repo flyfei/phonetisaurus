@@ -2,22 +2,25 @@
 #
 CC=g++ -O2
 LIBS=-lfst
-OUT=phonetisaurus
+OUT=phonetisaurus-g2p
 TMP=*.o
 EXTRA= #add any -I -L modifications here...
 
-OBJS=FstPathFinder.o
+OBJS=Phonetisaurus.o FstPathFinder.o
 
-all: phonetisaurus
+all: phonetisaurus-g2p
+
+Phonetisaurus.o: Phonetisaurus.cpp
+	$(CC) $(EXTRA) Phonetisaurus.cpp -c -o Phonetisaurus.o
 
 FstPathFinder.o: FstPathFinder.cpp
 	$(CC) $(EXTRA) FstPathFinder.cpp -c -o FstPathFinder.o
 
-phonetisaurus: FstPathFinder.o Phonetisaurus.cpp
-	$(CC) $(LIBS) $(EXTRA) $(OBJS) Phonetisaurus.cpp -o phonetisaurus
+phonetisaurus-g2p: FstPathFinder.o Phonetisaurus.o phonetisaurus-g2p.cpp
+	$(CC) $(LIBS) $(EXTRA) $(OBJS) phonetisaurus-g2p.cpp -o phonetisaurus-g2p
 
-libopenfsttools: FstPathFinder.o
-	$(CC) -fPIC $(EXTRA) -c FstPathFinder.cpp
+#libopenfsttools: FstPathFinder.o
+#	$(CC) -fPIC $(EXTRA) -c FstPathFinder.cpp
 
 clean:
 	rm $(OUT) $(TMP) 
