@@ -19,8 +19,5 @@ FstPathFinder.o: FstPathFinder.cpp
 phonetisaurus-g2p: FstPathFinder.o Phonetisaurus.o phonetisaurus-g2p.cpp
 	$(CC) $(LIBS) $(EXTRA) $(OBJS) phonetisaurus-g2p.cpp -o phonetisaurus-g2p
 
-#libopenfsttools: FstPathFinder.o
-#	$(CC) -fPIC $(EXTRA) -c FstPathFinder.cpp
-
 clean:
 	rm $(OUT) $(TMP) 

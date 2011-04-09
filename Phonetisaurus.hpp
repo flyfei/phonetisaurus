@@ -24,7 +24,7 @@ public:
     string        sb;
     string        skip;
     string        tie;
-    set<string>   clusters;
+    map<vector<string>, int>   clusters;
     //FST stuff
     StdVectorFst  *g2pmodel;
     SymbolTable   *isyms;
@@ -32,17 +32,16 @@ public:
         
     Phonetisaurus( );
         
-    Phonetisaurus( const char* g2pmodel_file, const char* clusters_file, 
-                  const char* isyms_file, const char* osyms_file );
+    Phonetisaurus( const char* g2pmodel_file );
 
-    StdVectorFst entryToFSA( string entry );
+    StdVectorFst entryToFSA( vector<string> entry );
 
-    vector<PathData> phoneticize( string entry, int nbest );
+    vector<PathData> phoneticize( vector<string> entry, int nbest );
 
     void printPaths( vector<PathData> paths, int nbest, string correct="" );
     
 private:
-    void loadClusters( const char* clusters_file );
+    void loadClusters( );
 
 };
 

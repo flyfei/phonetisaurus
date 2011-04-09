@@ -12,10 +12,10 @@
 
 int main( int argc, const char* argv[] ) {
     
-    Phonetisaurus phonetisaurus( argv[1], argv[2], argv[3], argv[4] );
+    Phonetisaurus phonetisaurus( argv[1]);
     
     ifstream test_fp;
-    test_fp.open( argv[5] );
+    test_fp.open( argv[2] );
     string line;
     
     if( test_fp.is_open() ){
@@ -38,7 +38,16 @@ int main( int argc, const char* argv[] ) {
                 i++;
                 p = strtok(NULL, "\t");
             }
-            vector<PathData> paths = phonetisaurus.phoneticize( word, 1 );
+            
+            //This approach assumes that the input alphabet 
+            // consists exclusively of 1-character tokens
+            //This should be OK for English G2P, but is no good 
+            // for P2G or languages with multicharacter graphemes.
+            vector<string> entry;
+            int j;
+            for( j=0; j < word.size(); j++ )
+                entry.push_back( word.substr(j,1) );
+            vector<PathData> paths = phonetisaurus.phoneticize( entry, 1 );
             phonetisaurus.printPaths( paths, 1, pron );
         }
         test_fp.close();

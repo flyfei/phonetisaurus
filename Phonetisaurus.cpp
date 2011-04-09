@@ -20,53 +20,55 @@ Phonetisaurus::Phonetisaurus( ) {
     //Default constructor
 }
 
-Phonetisaurus::Phonetisaurus( const char* g2pmodel_file, const char* clusters_file, 
-                             const char* isyms_file, const char* osyms_file ) {
+Phonetisaurus::Phonetisaurus( const char* g2pmodel_file ) {
     //Base constructor.  Load the clusters file, the models and setup shop.
     eps  = "<eps>";
     sb   = "<s>";
     se   = "</s>";
     skip = "_";
     tie  = "&";
-    loadClusters( clusters_file );
     
-    isyms = SymbolTable::ReadText( isyms_file );
-
-    osyms = SymbolTable::ReadText( osyms_file );
-
     g2pmodel = StdVectorFst::Read( g2pmodel_file );
 
+    isyms = (SymbolTable*)g2pmodel->InputSymbols(); 
+
+    osyms = (SymbolTable*)g2pmodel->OutputSymbols(); 
+    
+    loadClusters( );
+    
     //We need make sure the g2pmodel is arcsorted
     ILabelCompare<StdArc> icomp;
     ArcSort( g2pmodel, icomp );
 }
 
 
-void Phonetisaurus::loadClusters( const char* clusters_file ){
+void Phonetisaurus::loadClusters( ){
     /*
      Load the clusters file containing the list of 
      subsequences generated during multiple-to-multiple alignment
     */
     
-    ifstream clusters_fp;
-    clusters_fp.open( clusters_file );
-    string line;
-    if( clusters_fp.is_open() ){
-        while( clusters_fp.good() ){
-            getline( clusters_fp, line );
-            if( line.compare("")==0 )
-                continue;
-            clusters.insert(line);
+    for( size_t i = 0; i < isyms->NumSymbols(); i++ ){
+        string sym = isyms->Find( i );
+        
+        if( sym.find(tie) != string::npos ){
+            char* tmpstring = (char *)sym.c_str();
+            char* p = strtok(tmpstring, tie.c_str());
+            vector<string> cluster;
+            
+            while (p) {
+                cluster.push_back(p);
+                p = strtok(NULL, tie.c_str());
+            }
+            
+            clusters[cluster] = i;
         }
-        clusters_fp.close();
-    }else{
-        cout << "Couldn't open the clusters file!" << endl;
     }
     return;
 }
 
 
-StdVectorFst Phonetisaurus::entryToFSA( string entry ){
+StdVectorFst Phonetisaurus::entryToFSA( vector<string> entry ){
     /*
      Transform an input spelling/pronunciation into an equivalent
      FSA, adding extra arcs as needed to accomodate clusters.
@@ -76,35 +78,46 @@ StdVectorFst Phonetisaurus::entryToFSA( string entry ){
     efst.AddState();
     efst.SetStart(0);
 
-    set<string>::iterator it;
     efst.AddState();
     efst.AddArc( 0, StdArc( isyms->Find( sb ), isyms->Find( sb ), 0, 1 ));
     size_t i=0;
     
+    //Build the basic FSA
     for( i=0; i<entry.size(); i++){
         efst.AddState();
-        string ch = entry.substr(i,1);
+        string ch = entry[i];
         efst.AddArc( i+1, StdArc( isyms->Find(ch), isyms->Find(ch), 0, i+2 ));
         if( i==0 ) 
             continue;
         
-        string sub = entry.substr(i-1,2);
-        it = clusters.find(sub);
-        if( it!=clusters.end() ){
-            sub.insert( 1, tie );
-            efst.AddArc( i, StdArc( isyms->Find(sub), isyms->Find(sub), 0, i+2));
-        }
+    }
+    
+    //Add any cluster arcs
+    map<vector<string>,int>::iterator it_i;
+    for( it_i=clusters.begin(); it_i!=clusters.end(); it_i++ ){
+        vector<string>::const_iterator it_j;
+        vector<string> cluster = (*it_i).first;
+        it_j = search( entry.begin(), entry.end(), cluster.begin(), cluster.end() );
+        if( it_j != entry.end() )
+            efst.AddArc( it_j-entry.begin()+1, StdArc( 
+                        (*it_i).second,                     //input symbol
+                        (*it_i).second,                     //output symbol
+                        0,                                  //weight
+                        it_j-entry.begin()+cluster.size()+1 //destination state
+                    ) );
     }
     
     efst.AddState();
     efst.AddArc( i+1, StdArc( isyms->Find( se ), isyms->Find( se ), 0, i+2));
     efst.SetFinal(i+2,0);
-
+    efst.SetInputSymbols(isyms);
+    efst.SetOutputSymbols(isyms);
+    
     return efst;
 }
 
 
-vector<PathData> Phonetisaurus::phoneticize( string entry, int nbest ){
+vector<PathData> Phonetisaurus::phoneticize( vector<string> entry, int nbest ){
     /*
      Generate pronunciation/spelling hypotheses for an 
      input entry.
