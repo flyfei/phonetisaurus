@@ -24,9 +24,11 @@ public:
     string        sb;
     string        skip;
     string        tie;
+    set<string>   skipSeqs;
     map<vector<string>, int>   clusters;
     //FST stuff
     StdVectorFst  *g2pmodel;
+    StdVectorFst  epsMapper;
     SymbolTable   *isyms;
     SymbolTable   *osyms;
         
@@ -36,6 +38,8 @@ public:
 
     StdVectorFst entryToFSA( vector<string> entry );
 
+    StdVectorFst makeEpsMapper( );
+    
     vector<PathData> phoneticize( vector<string> entry, int nbest );
 
     void printPaths( vector<PathData> paths, int nbest, string correct="" );

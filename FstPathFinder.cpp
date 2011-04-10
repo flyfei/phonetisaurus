@@ -27,33 +27,90 @@ processing.
 
 #include "FstPathFinder.hpp"
 
-void FstPathFinder::findAllStrings(StdVectorFst& fst, SymbolTable& st, string& seqToSkip, ProjectionEnum printInputOrOutput) {
-  vector<string> path;
-  TropicalWeight tw(TropicalWeight::One());
-  findAllStringsHelper(fst, st, fst.Start(), path, tw, seqToSkip, printInputOrOutput);
+FstPathFinder::FstPathFinder( ) {
+    //Default constructor
 }
 
-void FstPathFinder::findAllStringsHelper(StdVectorFst& fst, SymbolTable& st, int state, vector<string>& path, TropicalWeight cost, string& seqToSkip, ProjectionEnum printInputOrOutput) {
-  if(fst.Final(state) != TropicalWeight::Zero()) {
-    PathData pdata;
-    pdata.path     = path;
-    pdata.pathcost = (Times(cost,fst.Final(state)));
-    paths.push_back(pdata);
-    path.clear();
+FstPathFinder::FstPathFinder( set<string> skipset ) {
+    //Constructor for a non-empty skipset
+    skipSeqs = skipset;
+}
+
+void FstPathFinder::findAllStrings( StdVectorFst& fst ) {
+    /*
+     Main search function.  Initiates the WFSA traversal.
+     We are making three potentially dangerous assumptions 
+     here regarding the input FST:
+     
+       1. It has *ALREADY* been run through the shortestpath algorithm
+           *This guarantees the the FST is acyclic and that the paths are 
+             sorted according to path cost.
+       2. It has *ALREADY* been projected
+           *This just saves us some hassle.
+       3. The symbol tables have been stored in the input FST
+           *This just saves us some hassle.
+     
+     If the input FST does not meet these conditions this will 
+     cause problems.
+     */
+    
+    vector<string> path;
+    isyms = (SymbolTable*)fst.InputSymbols();
+    findAllStringsHelper( fst, fst.Start(), path, TropicalWeight::One() );
+    
     return;
-  }
+}
 
-  for(ArcIterator< StdVectorFst > iter(fst,state); !iter.Done(); iter.Next()) {
-    StdArc arc = iter.Value();
+void FstPathFinder::addOrDiscardPath( PathData pdata ) {
+    /*
+     Determine whether or not the input path has been added
+     to the paths vector or not.  If it hasn't, add it, otherwise
+     discard it.
+    */
+    
+    set< vector<string> >::iterator sit;
+    sit = uniqueStrings.find( pdata.path );
 
-    string symbol = (printInputOrOutput) == FstPathFinder::PROJECT_INPUT ? st.Find( arc.ilabel ) : st.Find( arc.olabel );
+    if ( sit == uniqueStrings.end() ){
+        paths.push_back( pdata );
+        uniqueStrings.insert( pdata.path );
+    }        
+    return;
+}
 
-    if( symbol.compare( seqToSkip ) != 0 ) {
-      path.push_back(symbol);
+void FstPathFinder::findAllStringsHelper(StdVectorFst& fst, int state, vector<string>& path, TropicalWeight cost ) {
+    /*
+     Recursively traverse the WFSA and build up a vector of 
+      unique paths and associated costs.
+    */
+    
+    if( fst.Final(state) != TropicalWeight::Zero() ) {
+        
+        PathData pdata;
+        pdata.path     = path;
+        pdata.pathcost = Times(cost,fst.Final(state));
+        
+        addOrDiscardPath( pdata );
+        
+        path.clear();
+        
+        return;
     }
 
-    findAllStringsHelper(fst, st, arc.nextstate, path, Times(cost, arc.weight.Value()), seqToSkip, printInputOrOutput);
-  }
+    for( ArcIterator<StdVectorFst> iter(fst,state); !iter.Done(); iter.Next() ) {
+        StdArc arc = iter.Value();
+
+        string symbol = isyms->Find( arc.ilabel );
+        
+        bool skip = false;
+        for( set<string>::iterator sit=skipSeqs.begin(); sit!=skipSeqs.end(); sit++ )
+            if( symbol.compare( *sit ) == 0 )
+                skip = true;
+        if( skip==false )
+            path.push_back(symbol);
+        
+        findAllStringsHelper( fst, arc.nextstate, path, Times(cost, arc.weight.Value()) );
+    }
 }
 
 

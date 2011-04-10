@@ -33,33 +33,38 @@ processing.
 using namespace fst;
 
 typedef struct PathData{
-  vector<string> path;
-  TropicalWeight pathcost;
+    vector<string> path;
+    TropicalWeight pathcost;
 };
 
 class FstPathFinder{
-  public:
     
-  vector<PathData> paths;
+public:
+    
+    vector<PathData> paths;
+    
+    set<string> skipSeqs;
+    
+    set< vector<string> > uniqueStrings;
+    
+    SymbolTable *isyms; 
+    
+    FstPathFinder( );
+    
+    FstPathFinder( set<string> skipset );
 
-  enum ProjectionEnum { PROJECT_INPUT, PROJECT_OUTPUT } ;
+    void findAllStrings( StdVectorFst&  fst );
+    
+private:
+    
+    void addOrDiscardPath( PathData pdata );
 
-  void findAllStrings(
-		      StdVectorFst&  fst, 
-		      SymbolTable&   st, 
-		      string&        seqToSkip, 
-		      ProjectionEnum printInputOrOutput = PROJECT_OUTPUT
-		      );
-
-  void findAllStringsHelper( 
-			    StdVectorFst&   fst, 
-			    SymbolTable&    st, 
+    void findAllStringsHelper( 
+                StdVectorFst&   fst, 
 			    int             state, 
 			    vector<string>& str, 
-			    TropicalWeight  cost, 
-			    string&         seqToSkip, 
-			    ProjectionEnum  printInputOrOutput = PROJECT_OUTPUT
-			     ); 
+			    TropicalWeight  cost 
+              ); 
 
 }; // end class
 

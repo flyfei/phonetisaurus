@@ -28,6 +28,12 @@ Phonetisaurus::Phonetisaurus( const char* g2pmodel_file ) {
     skip = "_";
     tie  = "&";
     
+    skipSeqs.insert(eps);
+    skipSeqs.insert(sb);
+    skipSeqs.insert(se);
+    skipSeqs.insert(skip);
+    skipSeqs.insert("-");
+    
     g2pmodel = StdVectorFst::Read( g2pmodel_file );
 
     isyms = (SymbolTable*)g2pmodel->InputSymbols(); 
@@ -35,6 +41,8 @@ Phonetisaurus::Phonetisaurus( const char* g2pmodel_file ) {
     osyms = (SymbolTable*)g2pmodel->OutputSymbols(); 
     
     loadClusters( );
+    
+    epsMapper = makeEpsMapper( );
     
     //We need make sure the g2pmodel is arcsorted
     ILabelCompare<StdArc> icomp;
@@ -67,6 +75,37 @@ void Phonetisaurus::loadClusters( ){
     return;
 }
 
+StdVectorFst Phonetisaurus::makeEpsMapper( ){
+    /*
+     Generate a mapper FST to transform unwanted output symbols
+     to the epsilon symbol.
+     
+     This can be used to remove unwanted symbols from the final 
+     result, but in tests was 7x slower than manual removal
+     via the FstPathFinder object.
+     */
+    
+    StdVectorFst mfst;
+    mfst.AddState();
+    mfst.SetStart(0);
+    
+    set<string>::iterator sit;
+    for( size_t i=0; i< osyms->NumSymbols(); i++ ){
+        string sym = osyms->Find( i );
+        sit = skipSeqs.find( sym );
+        if( sit!=skipSeqs.end() )
+            mfst.AddArc( 0, StdArc( i, 0, 0, 0 ) );
+        else
+            mfst.AddArc( 0, StdArc( i, i, 0, 0 ) );
+    }
+    mfst.SetFinal(0, 0);
+    ILabelCompare<StdArc> icomp;
+    ArcSort( &mfst, icomp );
+    mfst.SetInputSymbols( osyms );
+    mfst.SetOutputSymbols( osyms );
+    
+    return mfst;
+}
 
 StdVectorFst Phonetisaurus::entryToFSA( vector<string> entry ){
     /*
@@ -109,9 +148,9 @@ StdVectorFst Phonetisaurus::entryToFSA( vector<string> entry ){
     
     efst.AddState();
     efst.AddArc( i+1, StdArc( isyms->Find( se ), isyms->Find( se ), 0, i+2));
-    efst.SetFinal(i+2,0);
-    efst.SetInputSymbols(isyms);
-    efst.SetOutputSymbols(isyms);
+    efst.SetFinal( i+2, 0 );
+    efst.SetInputSymbols( isyms );
+    efst.SetOutputSymbols( isyms );
     
     return efst;
 }
@@ -124,6 +163,7 @@ vector<PathData> Phonetisaurus::phoneticize( vector<string> entry, int nbest ){
     */
     
     StdVectorFst result;
+    StdVectorFst epsMapped;
     StdVectorFst shortest;
 
     StdVectorFst efst = entryToFSA( entry );
@@ -131,20 +171,17 @@ vector<PathData> Phonetisaurus::phoneticize( vector<string> entry, int nbest ){
     Compose( efst, *g2pmodel, &result );
 
     Project(&result, PROJECT_OUTPUT);
-
+    
     if( nbest > 1 ){
-        //This is a cheesy hack. We should really be determinizing the result
-        // after removing all the unwanted symbols, otherwise we cannot guarantee 
-        // that the paths returned will actually be unique.  
-        //We are not doing this because the vanilla LM WFST is not determinization
-        // friendly and the operation may not terminate.
-        ShortestPath( result, &shortest, 5000 );
+        //This is a cheesy hack. 
+        ShortestPath( result, &shortest, 500 );
     }else{
         ShortestPath( result, &shortest, 1 );
     }
-
-    FstPathFinder pathfinder;
-    pathfinder.findAllStrings( shortest, *osyms, eps );
+    
+    RmEpsilon( &shortest );
+    FstPathFinder pathfinder( skipSeqs );
+    pathfinder.findAllStrings( shortest );
     
     return pathfinder.paths;
 }
@@ -163,38 +200,30 @@ void Phonetisaurus::printPaths( vector<PathData> paths, int nbest, string correc
     string onepath;
     size_t k;
     for( k=0; k < paths.size(); k++ ){
+        if ( k >= nbest )
+            break;
         
         size_t j;
         for( j=0; j < paths[k].path.size(); j++ ){
-            
-            if( paths[k].path[j]==eps || paths[k].path[j]=="-" || 
-               paths[k].path[j]==skip || paths[k].path[j]==sb || 
-               paths[k].path[j]==se )
-                continue;
-            
             if( paths[k].path[j] != tie )
-                replace( paths[k].path[j].begin(), paths[k].path[j].end(), '&', ' ');
-            
+                replace( 
+                        paths[k].path[j].begin(), 
+                        paths[k].path[j].end(), 
+                        '&', 
+                        ' '
+                        );
             onepath += paths[k].path[j];
             
             if( j != paths[k].path.size()-1 )
                 onepath += " ";
         }
         
-        sit = seen.find(onepath);
-        
-        if( sit == seen.end() ){
-            cout << paths[k].pathcost << "\t" << onepath;
-            if( correct != "" )
-                cout << "\t" << correct;
-            cout << endl;
-            seen.insert( onepath );
-            numseen++;
-        }
-        
+
+        cout << paths[k].pathcost << "\t" << onepath;
+        if( correct != "" )
+            cout << "\t" << correct;
+        cout << endl;
         onepath = "";
-        if( numseen >= nbest )
-            break;
     }
 }
 
