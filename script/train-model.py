@@ -4,11 +4,6 @@ from m2m2format import m2m2Format
 from m2m2corpus import m2m2Corpus
 from arpa2fst import Arpa2WFST
 
-"""./m2m2format.py ./g014a2.train.bsf ftest/ftest
-m2m-aligner --delX --maxX 2 --maxY 2 --maxFn joint --sepInChar "|" --sepChar " " -i ftest/ftest.m2m2.train -o ftest/ftest.m2m2.align
-./m2m2corpus.py ftest/ftest.m2m2.align ftest/ftest
-estimate-ngram -s KN -o 6 -t ftest/ftest.corpus -wl ftest/ftest.6g.arpa
-./arpa2fst.py ftest/ftest.6g.arpa ftest/ftest 6"""
 
 def trainModel( args ):
     """

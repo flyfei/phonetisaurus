@@ -1,5 +1,5 @@
 #!/usr/bin/python
-import re, math
+import re, math, sys
 
 class Arpa2WFST( ):
     """
@@ -88,7 +88,7 @@ class Arpa2WFST( ):
                         g,p = parts[self.order].split("}")
                         arpa_ofp.write( self.make_arc( ",".join(parts[1:self.order]), ",".join(parts[1:self.order+1]), g, p, parts[0] ) )
                     else:
-                        sys.stderr.write("%s\n"%(line))
+                        arpa_ofp.write( self.make_arc( ",".join(parts[1:self.order+1]), ",".join(parts[2:self.order+1]), self.eps, self.eps, 0.0 ) )
                 elif self.order==self.max_order:
                     if parts[self.order]=="</s>":
                         arpa_ofp.write( self.make_arc( ",".join(parts[1:self.order]), parts[self.order], parts[self.order], parts[self.order], parts[0] ) )
