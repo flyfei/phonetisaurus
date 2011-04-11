@@ -11,6 +11,18 @@ Also wrote new model-training scripts.
 
 It should be much easier to train and test models now.
 
+REQUIREMENTS
+m2m-aligner and estimate-ngram must be accessibile from your ${PATH}
+variable.  If you have not installed them, you can obtain the source
+code from the following locations,
+
+m2m-aligner:
+ http://code.google.com/p/m2m-aligner/
+mitlm:
+ https://code.google.com/p/mitlm/
+
+  
+
 INSTALL
 $ make
 
