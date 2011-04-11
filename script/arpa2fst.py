@@ -13,9 +13,9 @@ class Arpa2WFST( ):
              change the eps symbol - or you will be in for a world of hurt!
     """
 
-    def __init__( self, arpaifile, arpaofile, eps="-", max_order=4 ):
+    def __init__( self, arpaifile, prefix="test", eps="<eps>", max_order=4 ):
         self.arpaifile = arpaifile
-        self.arpaofile = arpaofile
+        self.arpaofile = "PREFIX.fst.txt".replace("PREFIX",prefix)
         self.ssyms    = set([])
         self.isyms    = set([])
         self.osyms    = set([])
@@ -29,7 +29,7 @@ class Arpa2WFST( ):
         """
 
         ofp = open(ofile,"w")
-        ofp.write("- 0\n")
+        ofp.write("%s 0\n"%(self.eps))
         for i,sym in enumerate(syms):
             ofp.write("%s %d\n"%(sym,i+1))
         ofp.close()
@@ -39,7 +39,7 @@ class Arpa2WFST( ):
         """
            Convert values to the tropical semiring.
         """
-        logval = float(val) * -1.0
+        logval = math.log(10.0) * float(val) * -1.0
         return logval
 
     def make_arc( self, istate, ostate, isym, osym, weight=0.0 ):
@@ -49,7 +49,8 @@ class Arpa2WFST( ):
         """
         if not istate==self.eps: self.ssyms.add(istate)
         if not ostate==self.eps: self.ssyms.add(ostate)
-        
+        isym = re.sub(r"_",self.eps,isym)
+
         if not isym==self.eps: self.isyms.add(isym)
         if not osym==self.eps: self.osyms.add(osym)
         arc = "%s\t%s\t%s\t%s\t%f\n" % (istate, ostate, isym, osym, self.to_tropical(weight))
@@ -75,7 +76,7 @@ class Arpa2WFST( ):
                         arpa_ofp.write( self.make_arc( "<s>", self.eps, self.eps, self.eps, parts[2] ) )
                     elif len(parts)==3:
                         arpa_ofp.write( self.make_arc( parts[1], self.eps, self.eps, self.eps, parts[2] ) )
-                        p,g = parts[1].split(":")
+                        g,p = parts[self.order].split("}")
                         arpa_ofp.write( self.make_arc( self.eps, parts[1], g, p, parts[0] ) )
                     else:
                         sys.stderr.write("%s\n"%(line))
@@ -84,7 +85,7 @@ class Arpa2WFST( ):
                         arpa_ofp.write( self.make_arc( ",".join(parts[1:self.order]), parts[self.order], parts[self.order], parts[self.order], parts[0] ) )
                     elif len(parts)==self.order+2:
                         arpa_ofp.write( self.make_arc( ",".join(parts[1:self.order+1]), ",".join(parts[2:self.order+1]), self.eps, self.eps, parts[-1] ) )
-                        p,g = parts[self.order].split(":")
+                        g,p = parts[self.order].split("}")
                         arpa_ofp.write( self.make_arc( ",".join(parts[1:self.order]), ",".join(parts[1:self.order+1]), g, p, parts[0] ) )
                     else:
                         sys.stderr.write("%s\n"%(line))
@@ -92,7 +93,7 @@ class Arpa2WFST( ):
                     if parts[self.order]=="</s>":
                         arpa_ofp.write( self.make_arc( ",".join(parts[1:self.order]), parts[self.order], parts[self.order], parts[self.order], parts[0] ) )
                     else:
-                        p,g = parts[self.order].split(":")
+                        g,p = parts[self.order].split("}")
                         arpa_ofp.write( self.make_arc( ",".join(parts[1:self.order]), ",".join(parts[2:self.order+2]), g, p, parts[0] ) )
                 else:
                     pass
@@ -113,11 +114,12 @@ class Arpa2WFST( ):
 
 if __name__=="__main__":
     import sys, os
-    arpa = Arpa2WFST( sys.argv[1], sys.argv[5], max_order=int(sys.argv[7]) )
+    arpa = Arpa2WFST( sys.argv[1], prefix=sys.argv[2], max_order=int(sys.argv[3]) )
     arpa.arpa2fst( )
-    arpa.print_syms( arpa.ssyms, sys.argv[2] )
-    arpa.print_syms( arpa.isyms, sys.argv[3] )
-    arpa.print_syms( arpa.osyms, sys.argv[4] )
-    command = "fstcompile --ssymbols=%s --isymbols=%s --keep_osymbols --osymbols=%s %s > %s" % ( sys.argv[2], sys.argv[3], sys.argv[4], sys.argv[5], sys.argv[6] )
+    arpa.print_syms( arpa.ssyms, "%s.ssyms"%(sys.argv[2]) )
+    arpa.print_syms( arpa.isyms, "%s.isyms"%(sys.argv[2]) )
+    arpa.print_syms( arpa.osyms, "%s.osyms"%(sys.argv[2]) )
+    command = "fstcompile --ssymbols=PREFIX.ssyms --isymbols=PREFIX.isyms --keep_isymbols --osymbols=PREFIX.osyms --keep_osymbols PREFIX.fst.txt > PREFIX.fst".\
+        replace("PREFIX",sys.argv[2])
     print command
     os.system(command)

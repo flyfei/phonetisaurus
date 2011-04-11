@@ -26,7 +26,7 @@ Phonetisaurus::Phonetisaurus( const char* g2pmodel_file ) {
     sb   = "<s>";
     se   = "</s>";
     skip = "_";
-    tie  = "&";
+    tie  = "|";
     
     skipSeqs.insert(eps);
     skipSeqs.insert(sb);
@@ -134,16 +134,21 @@ StdVectorFst Phonetisaurus::entryToFSA( vector<string> entry ){
     //Add any cluster arcs
     map<vector<string>,int>::iterator it_i;
     for( it_i=clusters.begin(); it_i!=clusters.end(); it_i++ ){
-        vector<string>::const_iterator it_j;
+        vector<string>::iterator it_j;
+        vector<string>::iterator start = entry.begin();
         vector<string> cluster = (*it_i).first;
-        it_j = search( entry.begin(), entry.end(), cluster.begin(), cluster.end() );
-        if( it_j != entry.end() )
-            efst.AddArc( it_j-entry.begin()+1, StdArc( 
+        while( it_j != entry.end() ){
+            it_j = search( start, entry.end(), cluster.begin(), cluster.end() );
+            if( it_j != entry.end() ){
+                efst.AddArc( it_j-entry.begin()+1, StdArc( 
                         (*it_i).second,                     //input symbol
                         (*it_i).second,                     //output symbol
                         0,                                  //weight
                         it_j-entry.begin()+cluster.size()+1 //destination state
                     ) );
+                start = it_j+cluster.size();
+            }
+        }
     }
     
     efst.AddState();
@@ -209,7 +214,7 @@ void Phonetisaurus::printPaths( vector<PathData> paths, int nbest, string correc
                 replace( 
                         paths[k].path[j].begin(), 
                         paths[k].path[j].end(), 
-                        '&', 
+                        '|', 
                         ' '
                         );
             onepath += paths[k].path[j];
@@ -217,7 +222,6 @@ void Phonetisaurus::printPaths( vector<PathData> paths, int nbest, string correc
             if( j != paths[k].path.size()-1 )
                 onepath += " ";
         }
-        
 
         cout << paths[k].pathcost << "\t" << onepath;
         if( correct != "" )

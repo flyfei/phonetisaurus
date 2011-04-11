@@ -5,6 +5,43 @@ Josef Robert Novak
 UPDATED: 2011-04-07 Josef R. Novak
 The python 'decoder' is now obsolete.  Use the C++ tool.
 
+UPDATED: 2011-04-11 Josef R. Novak
+Many updates to the C++ 'decoder'.  It is now fairly nice.
+Also wrote new model-training scripts.  
+
+It should be much easier to train and test models now.
+
+INSTALL
+$ make
+
+TRAIN A MODEL
+$ cd script
+$ ./train-model.py --dict ../data/g014a2.train.bsf --verbose --delX --prefix "test/test"
+
+TEST A MODEL
+$ ../phonetisaurus-g2p -m test/test.fst -n 1 -t ../data/g014a2.clean.test
+
+TEST A WORD
+$ ../phonetisaurus-g2p -m test/test.fst -n 1 -w airmail
+
+GET NBEST RESULTS
+$ ../phonetisaurus-g2p -m test/test.fst -n 7 -w airmail
+
+
+I've only tested this latest build properly with the NETtalk database.
+It might die with something else...
+
+
+
+
+
+
+
+
+------------------------------------
+OLD STUFF
+------------------------------------
+
 Compile:
 $ make
 
