@@ -47,7 +47,6 @@ Phonetisaurus::Phonetisaurus( const char* g2pmodel_file ) {
     //We need make sure the g2pmodel is arcsorted
     ILabelCompare<StdArc> icomp;
     ArcSort( g2pmodel, icomp );
-    Closure( g2pmodel, CLOSURE_PLUS );
 }
 
 
