@@ -11,6 +11,9 @@ class simpleLM( ):
        A simple LM generation class.  Performs trivial backoff computation for 3-gram language models.
        This script can output LMs in ARPA format.  
        It is only suitable for small corpora, and is intended as a learning tool.
+
+       This is basically just a python port of the quick_lm.pl perl script.
+             http://www.speech.cs.cmu.edu/tools/download/quick_lm.pl
     """
     def __init__( self, infile, outfile=None, discount=0.5, log10=math.log(10.0) ):
         self.n = 3 #This is currently the only order supported
