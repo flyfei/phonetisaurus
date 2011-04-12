@@ -28,14 +28,15 @@ def trainModel( args ):
     else:
         command = command.replace("DELY","")
     print command
-    os.system(command)
+    if args.noalign==False:
+        os.system(command)
 
     #Format the m2m-aligner results for LM training
     m2m2Corpus( "PREFIX.align".replace("PREFIX",args.prefix), prefix=args.prefix )
     
     #Build up the mitlm command and run it
-    command = "estimate-ngram -s KN -o ORDER -t PREFIX.corpus -wl PREFIX.arpa".\
-        replace("ORDER",str(args.order)).replace("PREFIX",args.prefix)
+    command = "estimate-ngram -s SMOOTH -o ORDER -t PREFIX.corpus -wl PREFIX.arpa".\
+        replace("ORDER",str(args.order)).replace("PREFIX",args.prefix).replace("SMOOTH",args.smoothing)
     print command
     os.system(command)
 
@@ -68,11 +69,13 @@ if __name__=="__main__":
     parser.add_argument('--dict',     "-d", help="The input pronunciation dictionary.  This will be used to build the G2P/P2G model.", required=True )
     parser.add_argument('--delX',     "-a", help="m2m-aligner option: Allow deletions of left-hand (input/grapheme) tokens.", default=False, action="store_true")
     parser.add_argument('--delY',     "-b", help="m2m-aligner option: Allow deletions of right-hand (output/phoneme) tokens.", default=False, action="store_true")
+    parser.add_argument('--noalign',  "-n", help="Skip the alignment step.  Useful if you just want to try out different N-gram models.", default=False, action="store_true")
     parser.add_argument('--maxX',     "-x", help="m2m-aligner option: Maximum substring length for left-hand (input/grapheme) tokens.", default=2 )
     parser.add_argument('--maxY',     "-y", help="m2m-aligner option: Maximum substring length for right-hand (outut/phoneme) tokens.", default=2 )
     parser.add_argument('--maxFn',    "-c", help="m2m-aligner option: Maximization function.  May be one of 'conYX', 'conXY', or 'joint'.", default="joint" )
     parser.add_argument('--prefix',   "-p", help="A file prefix.  Will be prepended to all model files created during cascade generation.", default="test" )
     parser.add_argument('--order',    "-o", help="N-gram LM build option: Maximum order of the joint N-gram LM", default=6 )
+    parser.add_argument('--smoothing', "-s", help="N-gram LM build option: Specify smoothing algorithms.  (ML, FixKN, FixModKN, FixKN#, KN, ModKN, KN#)", default="KN" )
     parser.add_argument('--verbose',  "-v", help='Verbose mode.', default=False, action="store_true")
     args = parser.parse_args()
 
