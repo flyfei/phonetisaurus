@@ -20,8 +20,13 @@ void phoneticizeWord( const char* g2pmodel_file, string testword, int nbest ){
     // for P2G or languages with multicharacter graphemes.
     vector<string> entry;
 
-    for( int j=0; j < testword.size(); j++ )
+    for( int j=0; j < testword.size(); j++ ) {
+        if( phonetisaurus.isyms->Find(testword.substr(j,1))==-1 ){
+            cout << "Symbol: '" << testword.substr(j,1) << "' not found in input symbols table.  Aborting." << endl;
+            return;
+        }
         entry.push_back( testword.substr(j,1) );
+    }
     
     vector<PathData> paths = phonetisaurus.phoneticize( entry, nbest );
     phonetisaurus.printPaths( paths, nbest );
@@ -47,8 +52,16 @@ void phoneticizeSentence( const char* g2pmodel_file, string sentence, int nbest 
         word = p;
         vector<string> entry;
         
-        for( int j=0; j < word.size(); j++ )
+        for( int j=0; j < word.size(); j++ ) {
+            if( phonetisaurus.isyms->Find(word.substr(j,1))==-1 ){
+                cout << "Symbol: '" << word.substr(j,1) 
+                << "' not found in input symbols table." << endl
+                << "Aborting phoneticization of word: '" << word << "'." << endl
+                << "Aborting phoneticizer job." << endl;
+                return;
+            }
             entry.push_back( word.substr(j,1) );
+        }
         
         vector<PathData> paths = phonetisaurus.phoneticize( entry, nbest );
         phonetisaurus.printPaths( paths, nbest );
@@ -92,9 +105,16 @@ void phoneticizeTestSet( const char* g2pmodel_file, const char* testset_file, in
             //This should be OK for English G2P, but is no good 
             // for P2G or languages with multicharacter graphemes.
             vector<string> entry;
-
-            for( int j=0; j < word.size(); j++ )
+            for( int j=0; j < word.size(); j++ ) {
+                if( phonetisaurus.isyms->Find(word.substr(j,1))==-1 ){
+                    cout << "Symbol: '" << word.substr(j,1) 
+                    << "' not found in input symbols table." << endl
+                    << "Aborting phoneticization of word: '" << word << "'." << endl
+                    << "Aborting phoneticizer job." << endl;
+                    return;
+                }
                 entry.push_back( word.substr(j,1) );
+            }
             
             vector<PathData> paths = phonetisaurus.phoneticize( entry, nbest );
             phonetisaurus.printPaths( paths, nbest, pron );
