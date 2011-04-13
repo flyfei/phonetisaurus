@@ -19,7 +19,6 @@ abreast	x b r E s t
 absolution	@ b s x l u S x n
 abstemious	@ b s t i m i x s
 abstract	@ b s t r @ k t
-abstract	@ b s t r @ k t
 abut	x b ^ t
 abysmal	x b I z m L
 accent	@ k s E n t
@@ -75,8 +74,7 @@ aerodrome	E r x d r o m
 afar	x f a r
 affair	x f @ r
 affirmative	x f R m x t I v
-affix	@ f I X
-affix	x f I X
+affix	@ f I X,x f I X
 afflatus	x f l e t x s
 affluence	@ f l u x n s
 afghani	@ f g @ n i
@@ -180,8 +178,7 @@ animadvert	@ n x m @ d v R t
 animosity	@ n x m a s x t i
 anise	@ n x s
 anklet	@ G k l x t
-annex	@ n E X
-annex	x n E X
+annex	@ n E X,x n E X
 annual	@ n Y x l
 annunciate	x n x n s i e t
 annunciation	x n x n s i e S x n
@@ -301,8 +298,7 @@ attention	x t E n C x n
 attitude	@ t x t Y d
 attract	x t r @ k t
 attraction	x t r @ k S x n
-attribute	@ t r x b Y t
-attribute	x t r I b Y t
+attribute	@ t r x b Y t,x t r I b Y t
 auburn	c b R n
 auctorial	c k t o r i L
 audibly	c d x b l i
@@ -782,8 +778,7 @@ chon	C a n
 choose	C u z
 choosey	C u z i
 chopstick	C a p s t I k
-choral	k o r L
-choral	k x r @ l
+choral	k o r L,k x r @ l
 chow	C W
 christ	k r A s t
 chromatic	k r o m @ t I k
@@ -823,8 +818,7 @@ classicism	k l @ s x s I z M
 classification	k l @ s x f x k e S x n
 clavier	k l x v I r
 claw	k l c
-cleanly	k l E n l i
-cleanly	k l i n l i
+cleanly	k l E n l i,k l i n l i
 cleavage	k l i v I J
 clef	k l E f
 cleric	k l E r I k
@@ -869,8 +863,7 @@ colleague	k a l i g
 collide	k x l A d
 colloid	k a l O d
 colloquy	k a l x k w i
-colon	k o l x n
-colon	k x l o n
+colon	k o l x n,k x l o n
 colonizer	k a l x n A z R
 colonnade	k a l x n e d
 coloration	k ^ l x r e S x n
@@ -879,8 +872,7 @@ colossus	k x l a s x s
 colt	k o l t
 columnar	k x l x m n R
 comb	k o m
-combat	k a m b @ t
-combat	k x m b @ t
+combat	k a m b @ t,k x m b @ t
 combo	k a m b o
 combustible	k x m b x s t x b L
 comedown	k ^ m d W n
@@ -900,8 +892,7 @@ communique	k x m Y n x k e
 communistic	k a m Y n I s t I k
 commutator	k a m Y t e t R
 commute	k x m Y t
-compact	k a m p @ k t
-compact	k x m p @ k t
+compact	k a m p @ k t,k x m p @ k t
 companion	k x m p @ n y x n
 company	k ^ m p x n i
 compass	k ^ m p x s
@@ -911,27 +902,23 @@ competitive	k x m p E t x t I v
 compile	k x m p A l
 compiler	k x m p A l R
 complaisance	k x m p l e s N s
-complement	k a m p l x m E n t
-complement	k a m p l x m x n t
+complement	k a m p l x m E n t,k a m p l x m x n t
 complexity	k x m p l E X x t i
 complication	k a m p l x k e S x n
 complimentary	k a m p l x m E n t x r i
-compound	k a m p W n d
-compound	k a m p W n d
+compound	k a m p W n d,k a m p W n d
 comprehend	k a m p r I h E n d
 comprise	k x m p r A z
 computation	k a m p Y t e S x n
 concatenation	k a n k @ t x n e S x n
 concavity	k a n k @ v x t i
 concede	k x n s i d
-concert	k a n s R t
-concert	k x n s R t
+concert	k a n s R t,k x n s R t
 concerted	k x n s R t x d
 conches	k a n C x z
 concise	k x n s A s
 concoct	k x n k a k t
 concordance	k x n k c r d N s
-concrete	k a n k r i t
 concrete	k a n k r i t
 concubine	k a G k Y b A n
 condescend	k a n d I s E n d
@@ -964,8 +951,7 @@ conservator	k x n s R v x t R
 consign	k x n s A n
 consignment	k x n s A n m x n t
 consistory	k x n s I s t x r i
-console	k a n s o l
-console	k x n s o l
+console	k a n s o l,k x n s o l
 consonantal	k a n s x n @ n t L
 conspicuous	k x n s p I k Y x s
 constipate	k a n s t x p e t
@@ -975,16 +961,14 @@ construe	k x n s t r u
 consubstantiation	k a n s x b s t @ n C i e S x n
 consult	k x n s ^ l t
 consume	k x n s u m
-consummate	k a n s x m e t
-consummate	k x n s ^ m x t
+consummate	k a n s x m e t,k x n s ^ m x t
 consummation	k a n s x m e S x n
 contemplate	k a n t x m p l e t
 contemplation	k a n t x m p l e S x n
 contemporary	k x n t E m p x r E r i
 contempt	k x n t E m p t
 contend	k x n t E n d
-content	k a n t E n t
-content	k x n t E n t
+content	k a n t E n t,k x n t E n t
 contentment	k x n t E n t m x n t
 continental	k a n t N E n t L
 contingency	k x n t I n J x n s i
@@ -1005,8 +989,7 @@ control	k x n t r o l
 contumacious	k a n t Y m e S x s
 convene	k x n v i n
 convention	k x n v E n C x n
-convert	k a n v R t
-convert	k x n v R t
+convert	k a n v R t,k x n v R t
 convex	k a n v E X
 convivial	k x n v I v y L
 coolly	k u l i
@@ -1032,8 +1015,7 @@ cornet	k c r n E t
 cornflower	k c r n f l W R
 cornucopia	k c r n Y k o p i x
 corona	k x r o n x
-corps	k o r
-corps	k o r z
+corps	k o r,k o r z
 corpulence	k c r p Y l x n s
 corpuscle	k c r p x s L
 corral	k x r @ l
@@ -1119,8 +1101,7 @@ cumbrous	k ^ m b r x s
 cupcake	k ^ p k e k
 curate	k Y r x t
 curator	k Y r e t R
-cure	k y r
-cure	k Y r e
+cure	k y r,k Y r e
 curiosity	k y r i a s x t i
 curious	k Y r i x s
 currant	k R x n t
@@ -1280,8 +1261,7 @@ diaphragm	d A x f r @ m
 dicotyledon	d A k a t L i d N
 dictation	d I k t e S x n
 dies	d A z
-digest	d A J E s t
-digest	d A J E s t
+digest	d A J E s t,d A J E s t
 dill	d I l
 dillydally	d I l i d @ l i
 dimension	d x m E n S x n
@@ -1517,8 +1497,7 @@ erratic	I r @ t I k
 erratum	E r a t x m
 erst	R s t
 escape	I s k e p
-escort	E s k c r t
-escort	I s k c r t
+escort	E s k c r t,I s k c r t
 escudo	I s k u d o
 escutcheon	I s k ^ C x n
 eskimo	E s k x m o
@@ -1645,8 +1624,7 @@ fellowship	f E l o S I p
 felon	f E l x n
 felonious	f x l o n i x s
 feminine	f E m x n x n
-fen	f E n
-fen	f x n
+fen	f E n,f x n
 fenestration	f E n x s t r e S x n
 fermium	f E r m i x m
 ferric	f E r I k
@@ -1751,8 +1729,7 @@ fowl	f W l
 frame	f r e m
 franc	f r @ G k
 frankforter	f r @ G k f R t R
-frappe	f r @ p
-frappe	f r @ p e
+frappe	f r @ p,f r @ p e
 fraternal	f r x t R n L
 fray	f r e
 free	f r i
@@ -2206,8 +2183,7 @@ impound	I m p W n d
 impoverish	I m p a v x r I S
 imprecate	I m p r I k e t
 impressionistic	I m p r E S x n I s t I k
-imprint	I m p r I n t
-imprint	I m p r I n t
+imprint	I m p r I n t,I m p r I n t
 improve	I m p r u v
 improvident	I m p r a v x d x n t
 improvise	I m p r x v A z
@@ -2232,8 +2208,7 @@ incontestable	I n k x n t E s t x b L
 incontinent	I n k a n t N x n t
 incorporate	I n k c r p x r e t
 incorrigibly	I n k c r x J x b l i
-increase	I n k r i s
-increase	I n k r i s
+increase	I n k r i s,I n k r i s
 incredible	I n k r E d x b L
 incrustation	I n k r x s t e S x n
 incumbency	I n k ^ m b x n s i
@@ -2285,9 +2260,7 @@ infuse	I n f Y z
 ingathering	I n g @ D x r I G
 ingenue	@ n J x n u
 ingle	I G g L
-ingrain	I n g r e n
-ingrain	I n g r e n
-ingrain	I n g r e n
+ingrain	I n g r e n,I n g r e n,I n g r e n
 ingrate	I n g r e t
 ingratiate	I n g r e S i e t
 ingrowing	I n g r o I G
@@ -2310,8 +2283,7 @@ inoculate	I n a k Y l e t
 inquest	I n k w E s t
 inquisitive	I n k w I z x t I v
 insatiable	I n s e S x b L
-insert	I n s R t
-insert	I n s R t
+insert	I n s R t,I n s R t
 insider	I n s A d R
 insight	I n s A t
 insincere	I n s I n s I r
@@ -2336,11 +2308,9 @@ integrity	I n t E g r x t i
 intelligence	I n t E l x J x n s
 intelligible	I n t E l x J x b L
 intercession	I n t R s E S x n
-interchange	I n t R C e n J
-interchange	I n t R C e n J
+interchange	I n t R C e n J,I n t R C e n J
 interim	I n t x r x m
-interlock	I n t R l a k
-interlock	I n t R l a k
+interlock	I n t R l a k,I n t R l a k
 interlocutory	I n t R l a k Y t o r i
 intermediary	I n t R m i d i E r i
 intermezzo	I n t R m E ! o
@@ -2527,8 +2497,7 @@ laxity	l @ X x t i
 layer	l e R
 layette	l e E t
 lazar	l @ z R
-lead	l E d
-lead	l i d
+lead	l E d,l i d
 leaflet	l i f l x t
 leak	l i k
 leapfrog	l i p f r c g
@@ -3105,13 +3074,11 @@ orchestra	c r k x s t r x
 orderly	c r d R l i
 ordinal	c r d I n L
 ordnance	c r d n x n s
-ore	R x
-ore	o r
+ore	R x,o r
 organ	c r g x n
 orgy	c r J i
 orient	o r i E n t
-ornament	c r n x m E n t
-ornament	c r n x m x n t
+ornament	c r n x m E n t,c r n x m x n t
 ornery	c r n x r i
 orotund	c r x t x n d
 orthodox	c r T x d a X
@@ -3494,8 +3461,7 @@ prerogative	p r I r a g x t I v
 presbyopia	p r E z b i o p i x
 preschool	p r i s k u l
 prescience	p r i S i x n s
-present	p r E z N t
-present	p r I z E n t
+present	p r E z N t,p r I z E n t
 presentment	p r I z E n t m x n t
 presidium	p r I s I d i x m
 pretend	p r I t E n d
@@ -3697,24 +3663,20 @@ refresh	r I f r E S
 refrigerate	r I f r I J x r e t
 refuge	r E f Y J
 refulgence	r I f U l J x n s
-refuse	r E f Y s
-refuse	r I f Y z
+refuse	r E f Y s,r I f Y z
 regain	r i g e n
 regal	r i g L
 regard	r I g a r d
 regicidal	r E J x s A d L
 regimen	r E J x m x n
 regnal	r E g n L
-regress	r i g r E s
-regress	r I g r E s
+regress	r i g r E s,r I g r E s
 regularity	r E g Y l @ r x t i
 rehearse	r I h R s
 reinforce	r i x n f o r s
-reject	r i J E k t
-reject	r I J E k t
+reject	r i J E k t,r I J E k t
 relate	r I l e t
 relax	r I l @ X
-relay	r i l e
 relay	r i l e
 relevance	r E l x v x n s
 relic	r E l I k
@@ -3726,8 +3688,7 @@ rely	r I l A
 remark	r I m a r k
 remarkable	r I m a r k x b L
 remedial	r I m i d i L
-remount	r i m W n t
-remount	r i m W n t
+remount	r i m W n t,r i m W n t
 remove	r I m u v
 remunerate	r I m Y n x r e t
 renascence	r I n @ s N s
@@ -3752,8 +3713,7 @@ reptilian	r E p t I l i x n
 repulsive	r I p ^ l s I v
 requiem	r E k w i x m
 requisition	r E k w x z I S x n
-rerun	r i r ^ n
-rerun	r i r ^ n
+rerun	r i r ^ n,r i r ^ n
 resalable	r i s e l x b L
 reserved	r I z R v d
 reside	r I z A d
@@ -3885,7 +3845,6 @@ saucepan	s c s p @ n
 saucer	s c s R
 saucy	s c s i
 sauerkraut	s W R k r W t
-save	s e v
 save	s e v
 sawdust	s c d x s t
 saxophone	s @ X x f o n
@@ -4268,8 +4227,7 @@ stultify	s t ^ l t x f A
 stupidly	s t Y p x d l i
 sub	s ^ b
 subcontinent	s ^ b k a n t I n x n t
-subject	s ^ b J I k t
-subject	s x b J E k t
+subject	s ^ b J I k t,s x b J E k t
 subjective	s x b J E k t I v
 subjoin	s x b J O n
 subjunctive	s ^ b J x G k t I v
@@ -4318,8 +4276,7 @@ supervisor	s u p R v A z R
 supervisory	s u p R v A z x r i
 supplant	s x p l @ n t
 supple	s ^ p L
-supplement	s ^ p l x m E n t
-supplement	s ^ p l x m x n t
+supplement	s ^ p l x m E n t,s ^ p l x m x n t
 suppliant	s ^ p l i x n t
 supposition	s x p x z I S x n
 suppository	s x p a z x t o r i
@@ -4396,8 +4353,7 @@ taxpayer	t @ X p e R
 tea	t i
 teach	t i C
 teak	t i k
-tear	t E r
-tear	t I r
+tear	t E r,t I r
 teasel	t i z L
 teaspoon	t i s p u n
 teat	t I t
@@ -4442,8 +4398,7 @@ territorial	t E r x t o r i L
 territory	t E r x t o r i
 terse	t R s
 testamentary	t E s t x m E n t x r i
-tester	t E s t R
-tester	t i s t R
+tester	t E s t R,t i s t R
 tetanus	t E t N x s
 tether	t E D R
 tetrameter	t E t r @ m x t R
@@ -4451,8 +4406,7 @@ textbook	t E X t b U k
 texture	t E X C R
 thank	T @ G k
 thanksgiving	T @ G k s g I v I G
-that	D @ t
-that	D x t
+that	D @ t,D x t
 theatrical	T i @ t r I k L
 theft	T E f t
 thegn	T e n
@@ -4573,8 +4527,7 @@ transitive	t r @ n s x t I v
 transmutation	t r @ n s m Y t e S x n
 transpacific	t r @ n s p x s I f I k
 transparent	t r @ n s p @ r x n t
-transport	t r @ n s p o r t
-transport	t r @ n s p o r t
+transport	t r @ n s p o r t,t r @ n s p o r t
 trapdoor	t r @ p d o r
 trapezoid	t r @ p x z O d
 traumatic	t r x m @ t I k
@@ -4652,8 +4605,7 @@ uncontrollable	x n k x n t r o l x b L
 uncover	^ n k ^ v R
 unctuous	^ G k C Y x s
 under	^ n d R
-undercut	^ n d R k x t
-undercut	x n d R k ^ t
+undercut	^ n d R k x t,x n d R k ^ t
 underdog	^ n d R d c g
 undergrowth	^ n d R g r o T
 underhand	^ n d R h @ n d
@@ -4699,8 +4651,7 @@ upraise	x p r e z
 uprising	^ p r A z I G
 uproot	x p r u t
 upshot	^ p S a t
-upstart	^ p s t a r t
-upstart	x p s t a r t
+upstart	^ p s t a r t,x p s t a r t
 upstream	^ p s t r i m
 upturn	^ p t R n
 upward	^ p w R d
@@ -4726,8 +4677,7 @@ vacillation	v @ s x l e S x n
 vacuity	v @ k Y x t i
 vacuum	v @ k y u M
 vagrant	v e g r x n t
-vale	v a l e
-vale	v e l
+vale	v a l e,v e l
 valetudinarian	v @ l x t Y d N E r i x n
 validation	v @ l x d e S x n
 validity	v x l I d x t i
@@ -4905,8 +4855,7 @@ wench	w E n C
 wharves	* c r v z
 whatnot	* a t n a t
 wheel	* i l
-when	* E n
-when	* E n
+when	* E n,* E n
 whence	* E n s
 whereas	* E r @ z
 wherewith	* E r w I D
