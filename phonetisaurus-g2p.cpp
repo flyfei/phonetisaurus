@@ -12,8 +12,11 @@
 #include "utf8.h"
 
 
-vector<string> tokenize_utf8_string( string utf8_string ) {
-    
+vector<string> tokenize_utf8_string( string utf8_string, SymbolTable* isyms ) {
+    /*
+     Support for tokenizing a utf-8 string.
+     http://stackoverflow.com/questions/2852895/c-iterate-or-split-utf-8-string-into-array-of-symbols#2856241
+    */
     char* str = (char*)utf8_string.c_str(); // utf-8 string
     char* str_i = str;                      // string iterator
     char* str_j = str;
@@ -29,6 +32,13 @@ vector<string> tokenize_utf8_string( string utf8_string ) {
         int start = strlen(str) - strlen(str_j);
         int end   = strlen(str) - strlen(str_i);
         int len   = end - start;
+        if( isyms->Find( utf8_string.substr(start,len) )==-1 ){
+                cout << "Symbol: '" << utf8_string.substr(start,len) 
+                << "' not found in input symbols table." << endl
+                << "Aborting phoneticization of word: '" << utf8_string << "'." << endl
+                << "Aborting phoneticizer job." << endl;
+            exit(-1);
+        }
         string_vec.push_back( utf8_string.substr(start,len) );
     }
     while ( str_i < end );
@@ -43,7 +53,7 @@ void phoneticizeWord( const char* g2pmodel_file, string testword, int nbest ){
     // consists exclusively of 1-character tokens
     //This should be OK for English G2P, but is no good 
     // for P2G or languages with multicharacter graphemes.
-    vector<string> entry = tokenize_utf8_string( testword );
+    vector<string> entry = tokenize_utf8_string( testword, phonetisaurus.isyms );
     
     vector<PathData> paths = phonetisaurus.phoneticize( entry, nbest );
     phonetisaurus.printPaths( paths, nbest );
@@ -67,19 +77,7 @@ void phoneticizeSentence( const char* g2pmodel_file, string sentence, int nbest 
     int i=0;
     while (p) {
         word = p;
-        vector<string> entry = tokenize_utf8_string( word );
-        /*
-        for( int j=0; j < word.size(); j++ ) {
-            if( phonetisaurus.isyms->Find(word.substr(j,1))==-1 ){
-                cout << "Symbol: '" << word.substr(j,1) 
-                << "' not found in input symbols table." << endl
-                << "Aborting phoneticization of word: '" << word << "'." << endl
-                << "Aborting phoneticizer job." << endl;
-                return;
-            }
-            entry.push_back( word.substr(j,1) );
-        }
-        */
+        vector<string> entry = tokenize_utf8_string( word, phonetisaurus.isyms );
         vector<PathData> paths = phonetisaurus.phoneticize( entry, nbest );
         phonetisaurus.printPaths( paths, nbest );
         
@@ -121,19 +119,7 @@ void phoneticizeTestSet( const char* g2pmodel_file, const char* testset_file, in
             // consists exclusively of 1-character tokens
             //This should be OK for English G2P, but is no good 
             // for P2G or languages with multicharacter graphemes.
-            vector<string> entry = tokenize_utf8_string( word );
-            /*
-            for( int j=0; j < word.size(); j++ ) {
-                if( phonetisaurus.isyms->Find(word.substr(j,1))==-1 ){
-                    cout << "Symbol: '" << word.substr(j,1) 
-                    << "' not found in input symbols table." << endl
-                    << "Aborting phoneticization of word: '" << word << "'." << endl
-                    << "Aborting phoneticizer job." << endl;
-                    return;
-                }
-                entry.push_back( word.substr(j,1) );
-            }
-            */
+            vector<string> entry = tokenize_utf8_string( word, phonetisaurus.isyms );
             vector<PathData> paths = phonetisaurus.phoneticize( entry, nbest );
             phonetisaurus.printPaths( paths, nbest, pron );
         }

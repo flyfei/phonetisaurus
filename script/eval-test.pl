@@ -29,7 +29,9 @@ while(<STDIN>){
 	    $corr++;
 	    last;
 	}else{
-	    print $_."\n";
+	    if( @ARGV==1 && $ARGV[0] eq "-v" ){
+		print $_."\n";
+	    }
 	}
     }
     $total++;
