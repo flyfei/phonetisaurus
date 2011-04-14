@@ -28,6 +28,8 @@ while(<STDIN>){
 	if( $_[1] eq $pron ){
 	    $corr++;
 	    last;
+	}else{
+	    print $_."\n";
 	}
     }
     $total++;

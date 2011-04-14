@@ -49,7 +49,13 @@ class Arpa2WFST( ):
         """
         if not istate==self.eps: self.ssyms.add(istate)
         if not ostate==self.eps: self.ssyms.add(ostate)
-        isym = re.sub(r"_",self.eps,isym)
+        itoks = isym.split("|")
+        gtoks = []
+        for t in itoks:
+            if not t=="_":
+                gtoks.append(t)
+        if not isym=="_":
+            isym = "|".join(gtoks)
 
         if not isym==self.eps: self.isyms.add(isym)
         if not osym==self.eps: self.osyms.add(osym)
