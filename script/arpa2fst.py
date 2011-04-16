@@ -56,6 +56,8 @@ class Arpa2WFST( ):
                 gtoks.append(t)
         if not isym=="_":
             isym = "|".join(gtoks)
+        else:
+            isym = self.eps
 
         if not isym==self.eps: self.isyms.add(isym)
         if not osym==self.eps: self.osyms.add(osym)

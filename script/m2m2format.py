@@ -1,7 +1,7 @@
 #!/usr/bin/python
 import re, sys, os
 
-def m2m2Format( dict_file, prefix="test", graph_sep="", phon_sep=" ", entry_sep="\t", g2p=True ):
+def m2m2Format( dict_file, prefix="test", graph_sep="", phon_sep=" ", entry_sep="\t", reverse=False, swap=False ):
     """
       Format the raw dictionary file for the m2m alignment tool.
     """
@@ -20,27 +20,26 @@ def m2m2Format( dict_file, prefix="test", graph_sep="", phon_sep=" ", entry_sep=
         word = None; pron = None
         graphs = []; phons = [];
         
-        if g2p==True:
-            try:
-                word, pron = line.split(entry_sep)
-                phons = pron.split(phon_sep)
-            except:
-                phons = re.split(r"\s+", line)
-                word = phons.pop(0)
-        else:
-            try:
-                pron, word = line.split(entry_sep)
-                phons = pron.split(phon_sep)
-            except:
-                phons = re.split(r"\s+", line)
-                word = phons.pop(-1)
-        
+        word, pron = line.split(entry_sep)
+
         if graph_sep=="":
             graphs = list(word)
         else:
             graphs = word.split(graph_sep)
 
-        outline = "%s\t%s\n" % (" ".join(graphs), " ".join(phons))
+        if phon_sep=="":
+            phons = list(pron)
+        else:
+            phons = pron.split(phon_sep)
+        
+        if reverse==True:
+            graphs.reverse()
+            phons.reverse()
+
+        if swap==True:
+            outline = "%s\t%s\n" % (" ".join(phons), " ".join(graphs))
+        else:
+            outline = "%s\t%s\n" % (" ".join(graphs), " ".join(phons))
         outline = outline.encode("utf8")
         train_file_fp.write(outline)
     dict_file_fp.close()
@@ -50,6 +49,31 @@ def m2m2Format( dict_file, prefix="test", graph_sep="", phon_sep=" ", entry_sep=
 
 
 if __name__=="__main__":
-    import sys
-    m2m2Format( sys.argv[1], prefix=sys.argv[2] )
+    import sys, argparse
+
+    example = """./m2m2format.py --dict training.dic --prefix test"""
+    parser = argparse.ArgumentParser(description=example)
+    parser.add_argument('--dict',     "-d", help="The input pronunciation dictionary.  This will be used to build the G2P/P2G model.", required=True )
+    parser.add_argument('--graphsep', "-g", help="The grapheme separator for the raw dictionary file. Defaults to ''.", default="" )
+    parser.add_argument('--phonsep',  "-e", help="The phoneme separator for the raw dictionary file. Defaults to ' '.", default=" " )
+    parser.add_argument('--reverse',  "-r", help="Reverse the training data. 'word'->'drow'.", default=False, action="store_true")
+    parser.add_argument('--entrysep', "-y", help="The word/pronunciation separator for the raw dictionary file. Defaults to '\t'.", default="\t" )
+    parser.add_argument('--swap',     "-w", help="Swap the grapheme/phomeme input.  G2P vs. P2G model.", default=False, action="store_true" )
+    parser.add_argument('--prefix',   "-p", help="A file prefix.  Will be prepended to all model files created during cascade generation.", default="test" )
+    parser.add_argument('--verbose',  "-v", help='Verbose mode.', default=False, action="store_true")
+    args = parser.parse_args()
+
+    if args.verbose:
+        for attr, value in args.__dict__.iteritems():
+            print attr, value
+        
+    m2m2Format( 
+        args.dict, 
+        prefix=args.prefix, 
+        graph_sep=args.graphsep, 
+        phon_sep=args.phonsep, 
+        entry_sep=args.entrysep, 
+        reverse=args.reverse, 
+        swap=args.swap 
+        )
 

@@ -46,15 +46,41 @@ vector<string> tokenize_utf8_string( string utf8_string, SymbolTable* isyms ) {
     return string_vec;
 }
 
-void phoneticizeWord( const char* g2pmodel_file, string testword, int nbest ){
+vector<string> tokenize_string( string input_string, SymbolTable* isyms, string sep ){
+    /*
+     Tokenize the input using a user-specified character.
+    */
+    string strcopy = input_string.c_str();
+    char* tmpstring = (char *)input_string.c_str();
+    char *p = strtok(tmpstring, sep.c_str());
+    vector<string> entry;
+    
+    int i=0;
+    while (p) {
+        if( isyms->Find(p)==-1 ){
+            cout << "Symbol: '" << p 
+            << "' not found in input symbols table." << endl
+            << "Aborting phoneticization of word: '" << strcopy << "'." << endl
+            << "Aborting phoneticizer job." << endl;
+            exit(-1);
+        }
+        entry.push_back(p);
+        p = strtok(NULL, sep.c_str());
+    }
+    
+    return entry;
+}
+
+void phoneticizeWord( const char* g2pmodel_file, string testword, int nbest, string sep ){
     
     Phonetisaurus phonetisaurus( g2pmodel_file );
-    //This approach assumes that the input alphabet 
-    // consists exclusively of 1-character tokens
-    //This should be OK for English G2P, but is no good 
-    // for P2G or languages with multicharacter graphemes.
-    vector<string> entry = tokenize_utf8_string( testword, phonetisaurus.isyms );
-    
+
+    vector<string> entry;
+    if( sep.compare("")==0 )
+        entry = tokenize_utf8_string( testword, phonetisaurus.isyms );
+    else
+        entry = tokenize_string( testword, phonetisaurus.isyms, " " );
+
     vector<PathData> paths = phonetisaurus.phoneticize( entry, nbest );
     phonetisaurus.printPaths( paths, nbest );
     
@@ -86,7 +112,7 @@ void phoneticizeSentence( const char* g2pmodel_file, string sentence, int nbest 
     return;
 }
     
-void phoneticizeTestSet( const char* g2pmodel_file, const char* testset_file, int nbest ){
+void phoneticizeTestSet( const char* g2pmodel_file, const char* testset_file, int nbest, string sep ){
     
     Phonetisaurus phonetisaurus( g2pmodel_file );
     
@@ -115,11 +141,12 @@ void phoneticizeTestSet( const char* g2pmodel_file, const char* testset_file, in
                 p = strtok(NULL, "\t");
             }
             
-            //This approach assumes that the input alphabet 
-            // consists exclusively of 1-character tokens
-            //This should be OK for English G2P, but is no good 
-            // for P2G or languages with multicharacter graphemes.
-            vector<string> entry = tokenize_utf8_string( word, phonetisaurus.isyms );
+            vector<string> entry;
+            if( sep.compare("")==0 )
+                entry = tokenize_utf8_string( word, phonetisaurus.isyms );
+            else
+                entry = tokenize_string( word, phonetisaurus.isyms, sep );
+            
             vector<PathData> paths = phonetisaurus.phoneticize( entry, nbest );
             phonetisaurus.printPaths( paths, nbest, pron );
         }
@@ -138,12 +165,14 @@ int main( int argc, char **argv ) {
     int testword_flag      = 0;
     int sentence_flag      = 0;
     int nbest_flag         = 0;
+    int sep_flag           = 0;
     
 	/* File names */
 	const char* g2pmodel_file;
 	const char* testset_file;
 	string testword;
     string sentence;
+    string sep = "";
     int nbest    = 1;
     
 	/* Help Info */
@@ -157,6 +186,7 @@ Required:\n\
 Optional:\n\
    -s --sent: A ' ' separated sentence to phoneticize.\n\
    -n --nbest: Optional max number of hypotheses to produce for each entry.  Defaults to 1.\n\
+   -e --sep: Optional separator character for tokenization.  Defaults to ''.\n\
    -h --help: Print this help message.\n\n", argv[0]);
     
     /* Begin argument parsing */
@@ -169,12 +199,13 @@ Optional:\n\
             {"testword",   required_argument, 0, 'w'},
             {"sent",       required_argument, 0, 's'},
             {"nbest",      required_argument, 0, 'n'},
+            {"sep",        required_argument, 0, 'e'},
             {"help",       no_argument, 0, 'h'},
             {0,0,0,0}
         };
     
         int option_index = 0;
-        c = getopt_long( argc, argv, "hm:t:w:n:s:", long_options, &option_index);
+        c = getopt_long( argc, argv, "hm:t:w:n:s:e:", long_options, &option_index);
         
         if ( c == -1 )
             break;
@@ -202,6 +233,10 @@ Optional:\n\
                 sentence_flag = 1;
                 sentence = optarg;
                 break;
+            case 'e':
+                sep_flag = 1;
+                sep = optarg;
+                break;
             case 'h':
                 printf("%s", help_info);
                 exit(0);
@@ -226,9 +261,9 @@ Optional:\n\
     }
     
     if( testword_flag==1 ){
-        phoneticizeWord( g2pmodel_file, testword, nbest );
+      phoneticizeWord( g2pmodel_file, testword, nbest, sep );
     }else if( testset_file_flag==1 ){
-        phoneticizeTestSet( g2pmodel_file, testset_file, nbest );
+        phoneticizeTestSet( g2pmodel_file, testset_file, nbest, sep );
     }else if( sentence_flag==1 ){
         phoneticizeSentence( g2pmodel_file, sentence, nbest );
     }
