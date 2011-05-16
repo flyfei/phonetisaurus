@@ -161,7 +161,7 @@ StdVectorFst Phonetisaurus::entryToFSA( vector<string> entry ){
 }
 
 
-vector<PathData> Phonetisaurus::phoneticize( vector<string> entry, int nbest ){
+vector<PathData> Phonetisaurus::phoneticize( vector<string> entry, int nbest, int beam ){
     /*
      Generate pronunciation/spelling hypotheses for an 
      input entry.
@@ -179,7 +179,7 @@ vector<PathData> Phonetisaurus::phoneticize( vector<string> entry, int nbest ){
     
     if( nbest > 1 ){
         //This is a cheesy hack. 
-        ShortestPath( result, &shortest, 500 );
+        ShortestPath( result, &shortest, beam );
     }else{
         ShortestPath( result, &shortest, 1 );
     }

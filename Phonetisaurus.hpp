@@ -40,7 +40,7 @@ public:
 
     StdVectorFst makeEpsMapper( );
     
-    vector<PathData> phoneticize( vector<string> entry, int nbest );
+    vector<PathData> phoneticize( vector<string> entry, int nbest, int beam=500 );
 
     void printPaths( vector<PathData> paths, int nbest, string correct="" );
     

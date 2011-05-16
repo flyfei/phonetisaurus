@@ -71,7 +71,7 @@ vector<string> tokenize_string( string input_string, SymbolTable* isyms, string 
     return entry;
 }
 
-void phoneticizeWord( const char* g2pmodel_file, string testword, int nbest, string sep ){
+void phoneticizeWord( const char* g2pmodel_file, string testword, int nbest, string sep, int beam=500 ){
     
     Phonetisaurus phonetisaurus( g2pmodel_file );
 
@@ -81,13 +81,13 @@ void phoneticizeWord( const char* g2pmodel_file, string testword, int nbest, str
     else
         entry = tokenize_string( testword, phonetisaurus.isyms, " " );
 
-    vector<PathData> paths = phonetisaurus.phoneticize( entry, nbest );
+    vector<PathData> paths = phonetisaurus.phoneticize( entry, nbest, beam=beam );
     phonetisaurus.printPaths( paths, nbest );
     
     return;
 }
 
-void phoneticizeSentence( const char* g2pmodel_file, string sentence, int nbest ){
+void phoneticizeSentence( const char* g2pmodel_file, string sentence, int nbest, int beam=500 ){
     /*
      Produce a sentence level pronunciation hypothesis for sequence of words.
      Ideally we should concatenate the FSA versions of the word entries prior 
@@ -104,7 +104,7 @@ void phoneticizeSentence( const char* g2pmodel_file, string sentence, int nbest 
     while (p) {
         word = p;
         vector<string> entry = tokenize_utf8_string( word, phonetisaurus.isyms );
-        vector<PathData> paths = phonetisaurus.phoneticize( entry, nbest );
+        vector<PathData> paths = phonetisaurus.phoneticize( entry, nbest, beam=beam );
         phonetisaurus.printPaths( paths, nbest );
         
         p = strtok(NULL, " ");
@@ -112,7 +112,7 @@ void phoneticizeSentence( const char* g2pmodel_file, string sentence, int nbest 
     return;
 }
     
-void phoneticizeTestSet( const char* g2pmodel_file, const char* testset_file, int nbest, string sep ){
+void phoneticizeTestSet( const char* g2pmodel_file, const char* testset_file, int nbest, string sep, int beam=500 ){
     
     Phonetisaurus phonetisaurus( g2pmodel_file );
     
@@ -147,7 +147,7 @@ void phoneticizeTestSet( const char* g2pmodel_file, const char* testset_file, in
             else
                 entry = tokenize_string( word, phonetisaurus.isyms, sep );
             
-            vector<PathData> paths = phonetisaurus.phoneticize( entry, nbest );
+            vector<PathData> paths = phonetisaurus.phoneticize( entry, nbest, beam=beam );
             phonetisaurus.printPaths( paths, nbest, pron );
         }
         test_fp.close();
@@ -165,6 +165,7 @@ int main( int argc, char **argv ) {
     int testword_flag      = 0;
     int sentence_flag      = 0;
     int nbest_flag         = 0;
+    int beam_flag          = 0;
     int sep_flag           = 0;
     
 	/* File names */
@@ -173,8 +174,8 @@ int main( int argc, char **argv ) {
 	string testword;
     string sentence;
     string sep = "";
-    int nbest    = 1;
-    
+    int nbest  = 1;
+    int beam   = 500;
 	/* Help Info */
 	char help_info[1024];
     
@@ -187,6 +188,7 @@ Optional:\n\
    -s --sent: A ' ' separated sentence to phoneticize.\n\
    -n --nbest: Optional max number of hypotheses to produce for each entry.  Defaults to 1.\n\
    -e --sep: Optional separator character for tokenization.  Defaults to ''.\n\
+   -b --beam: Optional beam for N-best search.  Defaults to '500'. Larger beams will yield more N-best, but will not affect accuracy.\n\
    -h --help: Print this help message.\n\n", argv[0]);
     
     /* Begin argument parsing */
@@ -196,16 +198,17 @@ Optional:\n\
             /* These options set a flag */
             {"model",      required_argument, 0, 'm'},
             {"testset",    required_argument, 0, 't'},
-            {"testword",   required_argument, 0, 'w'},
+            {"word",       required_argument, 0, 'w'},
             {"sent",       required_argument, 0, 's'},
             {"nbest",      required_argument, 0, 'n'},
+            {"beam",       required_argument, 0, 'b'},
             {"sep",        required_argument, 0, 'e'},
             {"help",       no_argument, 0, 'h'},
             {0,0,0,0}
         };
     
         int option_index = 0;
-        c = getopt_long( argc, argv, "hm:t:w:n:s:e:", long_options, &option_index);
+        c = getopt_long( argc, argv, "hm:t:w:b:n:s:e:", long_options, &option_index);
         
         if ( c == -1 )
             break;
@@ -229,6 +232,10 @@ Optional:\n\
                 nbest_flag = 1;
                 nbest = atoi(optarg);
                 break;
+            case 'b':
+                beam_flag = 1;
+		beam = atoi(optarg);
+		break;
             case 's':
                 sentence_flag = 1;
                 sentence = optarg;
@@ -261,11 +268,11 @@ Optional:\n\
     }
     
     if( testword_flag==1 ){
-      phoneticizeWord( g2pmodel_file, testword, nbest, sep );
+      phoneticizeWord( g2pmodel_file, testword, nbest, sep, beam=beam );
     }else if( testset_file_flag==1 ){
-        phoneticizeTestSet( g2pmodel_file, testset_file, nbest, sep );
+      phoneticizeTestSet( g2pmodel_file, testset_file, nbest, sep, beam=beam );
     }else if( sentence_flag==1 ){
-        phoneticizeSentence( g2pmodel_file, sentence, nbest );
+      phoneticizeSentence( g2pmodel_file, sentence, nbest, beam=beam );
     }
 
     return 0;
