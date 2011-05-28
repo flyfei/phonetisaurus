@@ -71,7 +71,7 @@ vector<string> tokenize_string( string input_string, SymbolTable* isyms, string 
     return entry;
 }
 
-void phoneticizeWord( const char* g2pmodel_file, string testword, int nbest, string sep, int beam=500 ){
+void phoneticizeWord( const char* g2pmodel_file, string testword, int nbest, string sep, int beam=500, int output_words=0 ){
     
     Phonetisaurus phonetisaurus( g2pmodel_file );
 
@@ -81,8 +81,12 @@ void phoneticizeWord( const char* g2pmodel_file, string testword, int nbest, str
     else
         entry = tokenize_string( testword, phonetisaurus.isyms, " " );
 
-    vector<PathData> paths = phonetisaurus.phoneticize( entry, nbest, beam=beam );
-    phonetisaurus.printPaths( paths, nbest );
+    vector<PathData> paths = phonetisaurus.phoneticize( entry, nbest, beam );
+    if( output_words==0)
+      phonetisaurus.printPaths( paths, nbest );
+    else
+      phonetisaurus.printPaths( paths, nbest, "", testword );
+      
     
     return;
 }
@@ -104,7 +108,7 @@ void phoneticizeSentence( const char* g2pmodel_file, string sentence, int nbest,
     while (p) {
         word = p;
         vector<string> entry = tokenize_utf8_string( word, phonetisaurus.isyms );
-        vector<PathData> paths = phonetisaurus.phoneticize( entry, nbest, beam=beam );
+        vector<PathData> paths = phonetisaurus.phoneticize( entry, nbest, beam );
         phonetisaurus.printPaths( paths, nbest );
         
         p = strtok(NULL, " ");
@@ -277,11 +281,11 @@ Optional:\n\
     }
     
     if( testword_flag==1 ){
-      phoneticizeWord( g2pmodel_file, testword, nbest, sep, beam=beam );
+      phoneticizeWord( g2pmodel_file, testword, nbest, sep, beam, output_words_flag );
     }else if( testset_file_flag==1 ){
       phoneticizeTestSet( g2pmodel_file, testset_file, nbest, sep, beam, output_words_flag );
     }else if( sentence_flag==1 ){
-      phoneticizeSentence( g2pmodel_file, sentence, nbest, beam=beam );
+      phoneticizeSentence( g2pmodel_file, sentence, nbest, beam );
     }
 
     return 0;

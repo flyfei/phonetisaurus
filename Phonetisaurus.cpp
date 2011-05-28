@@ -156,7 +156,6 @@ StdVectorFst Phonetisaurus::entryToFSA( vector<string> entry ){
     efst.SetFinal( i+2, 0 );
     efst.SetInputSymbols( isyms );
     efst.SetOutputSymbols( isyms );
-    //efst.Write("efst");
     return efst;
 }
 
