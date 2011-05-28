@@ -156,7 +156,7 @@ StdVectorFst Phonetisaurus::entryToFSA( vector<string> entry ){
     efst.SetFinal( i+2, 0 );
     efst.SetInputSymbols( isyms );
     efst.SetOutputSymbols( isyms );
-    efst.Write("efst");
+    //efst.Write("efst");
     return efst;
 }
 
@@ -192,7 +192,7 @@ vector<PathData> Phonetisaurus::phoneticize( vector<string> entry, int nbest, in
 }
 
 
-void Phonetisaurus::printPaths( vector<PathData> paths, int nbest, string correct ){
+void Phonetisaurus::printPaths( vector<PathData> paths, int nbest, string correct, string word ){
     /*
      Convenience function to print out a path vector.
      Will print only the first N unique entries.
@@ -223,6 +223,8 @@ void Phonetisaurus::printPaths( vector<PathData> paths, int nbest, string correc
                 onepath += " ";
         }
 
+	if( word != "" )
+	  cout << word << "\t";
         cout << paths[k].pathcost << "\t" << onepath;
         if( correct != "" )
             cout << "\t" << correct;

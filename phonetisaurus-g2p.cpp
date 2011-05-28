@@ -112,7 +112,7 @@ void phoneticizeSentence( const char* g2pmodel_file, string sentence, int nbest,
     return;
 }
     
-void phoneticizeTestSet( const char* g2pmodel_file, const char* testset_file, int nbest, string sep, int beam=500 ){
+void phoneticizeTestSet( const char* g2pmodel_file, const char* testset_file, int nbest, string sep, int beam=500, int output_words=0 ){
     
     Phonetisaurus phonetisaurus( g2pmodel_file );
     
@@ -148,7 +148,10 @@ void phoneticizeTestSet( const char* g2pmodel_file, const char* testset_file, in
                 entry = tokenize_string( word, phonetisaurus.isyms, sep );
             
             vector<PathData> paths = phonetisaurus.phoneticize( entry, nbest, beam=beam );
-            phonetisaurus.printPaths( paths, nbest, pron );
+	    if( output_words==0)
+	      phonetisaurus.printPaths( paths, nbest, pron );
+	    else
+	      phonetisaurus.printPaths( paths, nbest, pron, word );
         }
         test_fp.close();
     }else{
@@ -167,6 +170,7 @@ int main( int argc, char **argv ) {
     int nbest_flag         = 0;
     int beam_flag          = 0;
     int sep_flag           = 0;
+    int output_words_flag  = 0;
     
 	/* File names */
 	const char* g2pmodel_file;
@@ -187,6 +191,7 @@ Required:\n\
 Optional:\n\
    -s --sent: A ' ' separated sentence to phoneticize.\n\
    -n --nbest: Optional max number of hypotheses to produce for each entry.  Defaults to 1.\n\
+   -o --output_words: Output the orthography along with the pronunciation hypotheses and scores.\n\
    -e --sep: Optional separator character for tokenization.  Defaults to ''.\n\
    -b --beam: Optional beam for N-best search.  Defaults to '500'. Larger beams will yield more N-best, but will not affect accuracy.\n\
    -h --help: Print this help message.\n\n", argv[0]);
@@ -201,6 +206,7 @@ Optional:\n\
             {"word",       required_argument, 0, 'w'},
             {"sent",       required_argument, 0, 's'},
             {"nbest",      required_argument, 0, 'n'},
+	    {"output_words", no_argument, 0, 'o'},
             {"beam",       required_argument, 0, 'b'},
             {"sep",        required_argument, 0, 'e'},
             {"help",       no_argument, 0, 'h'},
@@ -208,7 +214,7 @@ Optional:\n\
         };
     
         int option_index = 0;
-        c = getopt_long( argc, argv, "hm:t:w:b:n:s:e:", long_options, &option_index);
+        c = getopt_long( argc, argv, "hom:t:w:b:n:s:e:", long_options, &option_index);
         
         if ( c == -1 )
             break;
@@ -232,6 +238,9 @@ Optional:\n\
                 nbest_flag = 1;
                 nbest = atoi(optarg);
                 break;
+	    case 'o':
+	        output_words_flag = 1;
+		break;
             case 'b':
                 beam_flag = 1;
 		beam = atoi(optarg);
@@ -270,7 +279,7 @@ Optional:\n\
     if( testword_flag==1 ){
       phoneticizeWord( g2pmodel_file, testword, nbest, sep, beam=beam );
     }else if( testset_file_flag==1 ){
-      phoneticizeTestSet( g2pmodel_file, testset_file, nbest, sep, beam=beam );
+      phoneticizeTestSet( g2pmodel_file, testset_file, nbest, sep, beam, output_words_flag );
     }else if( sentence_flag==1 ){
       phoneticizeSentence( g2pmodel_file, sentence, nbest, beam=beam );
     }

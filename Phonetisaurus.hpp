@@ -42,7 +42,7 @@ public:
     
     vector<PathData> phoneticize( vector<string> entry, int nbest, int beam=500 );
 
-    void printPaths( vector<PathData> paths, int nbest, string correct="" );
+    void printPaths( vector<PathData> paths, int nbest, string correct="", string word="" );
     
 private:
     void loadClusters( );
