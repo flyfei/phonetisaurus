@@ -1,7 +1,7 @@
 # Makefile
 #
 CC=g++ -O2
-LIBS=-lfst
+LIBS=-lfst -ldl -lm
 OUT=phonetisaurus-g2p
 TMP=*.o
 EXTRA= #add any -I -L modifications here...
@@ -17,7 +17,7 @@ FstPathFinder.o: FstPathFinder.cpp
 	$(CC) $(EXTRA) FstPathFinder.cpp -c -o FstPathFinder.o
 
 phonetisaurus-g2p: FstPathFinder.o Phonetisaurus.o phonetisaurus-g2p.cpp
-	$(CC) $(LIBS) $(EXTRA) $(OBJS) phonetisaurus-g2p.cpp -o phonetisaurus-g2p
+	$(CC) $(EXTRA) $(OBJS) phonetisaurus-g2p.cpp -o phonetisaurus-g2p $(LIBS)
 
 clean:
 	rm $(OUT) $(TMP) 

@@ -32,7 +32,7 @@ processing.
 
 using namespace fst;
 
-typedef struct PathData{
+struct PathData{
     vector<string> path;
     TropicalWeight pathcost;
 };
