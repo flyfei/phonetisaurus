@@ -33,13 +33,16 @@ vector<string> tokenize_utf8_string( string utf8_string, SymbolTable* isyms ) {
         int end   = strlen(str) - strlen(str_i);
         int len   = end - start;
         if( isyms->Find( utf8_string.substr(start,len) )==-1 ){
-                cout << "Symbol: '" << utf8_string.substr(start,len) 
+                cerr << "Symbol: '" << utf8_string.substr(start,len) 
                 << "' not found in input symbols table." << endl
-                << "Aborting phoneticization of word: '" << utf8_string << "'." << endl
-                << "Aborting phoneticizer job." << endl;
-            exit(-1);
-        }
-        string_vec.push_back( utf8_string.substr(start,len) );
+		//<< "Aborting phoneticization of word: '" << utf8_string << "'." << endl
+         	<< "Mapping to null..." << endl;
+		
+                //<< "Aborting phoneticizer job." << endl;
+		//exit(-1);
+        }else{
+          string_vec.push_back( utf8_string.substr(start,len) );
+	}
     }
     while ( str_i < end );
     
@@ -58,14 +61,16 @@ vector<string> tokenize_string( string input_string, SymbolTable* isyms, string 
     int i=0;
     while (p) {
         if( isyms->Find(p)==-1 ){
-            cout << "Symbol: '" << p 
+            cerr << "Symbol: '" << p 
             << "' not found in input symbols table." << endl
-            << "Aborting phoneticization of word: '" << strcopy << "'." << endl
-            << "Aborting phoneticizer job." << endl;
-            exit(-1);
-        }
-        entry.push_back(p);
-        p = strtok(NULL, sep.c_str());
+            << "Mapping to null..." << endl;
+	    //<< "Aborting phoneticization of word: '" << strcopy << "'." << endl
+	    //<< "Aborting phoneticizer job." << endl;
+            //exit(-1);
+        }else{
+	  entry.push_back(p);
+	}
+	p = strtok(NULL, sep.c_str());
     }
     
     return entry;
@@ -82,12 +87,17 @@ void phoneticizeWord( const char* g2pmodel_file, string testword, int nbest, str
         entry = tokenize_string( testword, phonetisaurus.isyms, " " );
 
     vector<PathData> paths = phonetisaurus.phoneticize( entry, nbest, beam );
-    if( output_words==0)
-      phonetisaurus.printPaths( paths, nbest );
-    else
-      phonetisaurus.printPaths( paths, nbest, "", testword );
-      
-    
+    if( output_words==0){
+      while( phonetisaurus.printPaths( paths, nbest )==true ){
+	nbest++;
+	paths = phonetisaurus.phoneticize( entry, nbest, beam );
+      }
+    }else{
+      while( phonetisaurus.printPaths( paths, nbest, "", testword )==true){
+	nbest++;
+	paths = phonetisaurus.phoneticize( entry, nbest, beam );
+      }
+    }
     return;
 }
 
@@ -152,10 +162,18 @@ void phoneticizeTestSet( const char* g2pmodel_file, const char* testset_file, in
                 entry = tokenize_string( word, phonetisaurus.isyms, sep );
             
             vector<PathData> paths = phonetisaurus.phoneticize( entry, nbest, beam=beam );
-	    if( output_words==0)
-	      phonetisaurus.printPaths( paths, nbest, pron );
-	    else
-	      phonetisaurus.printPaths( paths, nbest, pron, word );
+	    int nbest_new = nbest;
+	    if( output_words==0){
+	      while( phonetisaurus.printPaths( paths, nbest_new, pron )==true ){
+		nbest_new++;
+		paths = phonetisaurus.phoneticize( entry, nbest_new, beam );
+	      }
+	    }else{
+	      while( phonetisaurus.printPaths( paths, nbest_new, pron, word )==true){
+		nbest_new++;
+		paths = phonetisaurus.phoneticize( entry, nbest_new, beam );
+	      }
+	    }
         }
         test_fp.close();
     }else{

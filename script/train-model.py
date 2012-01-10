@@ -10,23 +10,39 @@ def trainModel( args ):
       Train the G2P/P2G model and transform it into a WFST suitable for use with
         phonetisaurus-g2p
     """
-    
+    ascii = set([ chr(i) for i in xrange(33,127) ])
+    #Default separators
+    multi_sep = "|"; io_sep  = "}"
+
     check_prefix( args.prefix )
 
-    #Format the input dictionary file
-    m2m2Format( 
+    #Format the input dictionary file, and obtain the set of unique input chars
+    chars = m2m2Format( 
         args.dict, 
         prefix=args.prefix, 
         graph_sep=args.graphsep, 
         phon_sep=args.phonsep, 
         entry_sep=args.entrysep, 
         reverse=args.reverse, 
-        swap=args.swap 
+        swap=args.swap,
+        unify_case=args.unifycase
         )
 
+    #Make sure the separators we chose are not used in the training data.
+    # If a separator char is not safe, swap it with a safe char available.
+    safe_chars = ascii.difference(chars)
+    if multi_sep not in safe_chars:
+        print "Default multi-char separator was found in training data. Swapping:", multi_sep, "->",
+        multi_sep = safe_chars.pop()
+        print multi_sep
+    if io_sep not in safe_chars:
+        print "Default symbol separator was found in training data.  Swapping:", io_sep, "->",
+        io_sep = safe_chars.pop()
+        print io_sep
+
     #Build up the m2m-aligner command and run it
-    command = """m2m-aligner DELX DELY --maxX MAXX --maxY MAXY --maxFn MAXFN --sepInChar "|" --sepChar " " -i PREFIX.train -o PREFIX.align""".\
-        replace("MAXX",str(args.maxX)).replace("MAXY",str(args.maxY)).replace("MAXFN",args.maxFn).replace("PREFIX",args.prefix)
+    command = """m2m-aligner DELX DELY --maxX MAXX --maxY MAXY --maxFn MAXFN --sepInChar "CHARSEP" --sepChar " " -i PREFIX.train -o PREFIX.align""".\
+        replace("MAXX",str(args.maxX)).replace("MAXY",str(args.maxY)).replace("MAXFN",args.maxFn).replace("PREFIX",args.prefix).replace("CHARSEP",multi_sep)
     if args.delX==True:
         command = command.replace("DELX","--delX")
     else:
@@ -35,12 +51,16 @@ def trainModel( args ):
         command = command.replace("DELY","--delY")
     else:
         command = command.replace("DELY","")
+
+
     print command
+
+
     if args.noalign==False:
         os.system(command)
 
     #Format the m2m-aligner results for LM training
-    m2m2Corpus( "PREFIX.align".replace("PREFIX",args.prefix), prefix=args.prefix )
+    m2m2Corpus( "PREFIX.align".replace("PREFIX",args.prefix), prefix=args.prefix, multi_sep=multi_sep, io_sep=io_sep )
     
     #Build up the mitlm command and run it
     command = "estimate-ngram -s SMOOTH -o ORDER -t PREFIX.corpus -wl PREFIX.arpa".\
@@ -49,11 +69,11 @@ def trainModel( args ):
     os.system(command)
 
     #Convert the LM to WFST format and compile it
-    arpa = Arpa2WFST( "PREFIX.arpa".replace("PREFIX",args.prefix), prefix=args.prefix, max_order=args.order )
+    arpa = Arpa2WFST( "PREFIX.arpa".replace("PREFIX",args.prefix), prefix=args.prefix, max_order=args.order, multi_sep=multi_sep, io_sep=io_sep )
     arpa.arpa2fst( )
-    arpa.print_syms( arpa.ssyms, "%s.ssyms"%(args.prefix) )
-    arpa.print_syms( arpa.isyms, "%s.isyms"%(args.prefix) )
-    arpa.print_syms( arpa.osyms, "%s.osyms"%(args.prefix) )
+    arpa.print_syms( arpa.ssyms, "%s.ssyms"%(args.prefix), reserved=[arpa.eps] )
+    arpa.print_syms( arpa.isyms, "%s.isyms"%(args.prefix), reserved=[arpa.eps,arpa.multi_sep] )
+    arpa.print_syms( arpa.osyms, "%s.osyms"%(args.prefix), reserved=[arpa.eps] )
     command = "fstcompile --ssymbols=PREFIX.ssyms --isymbols=PREFIX.isyms --keep_isymbols --osymbols=PREFIX.osyms --keep_osymbols PREFIX.fst.txt > PREFIX.fst".\
         replace("PREFIX",args.prefix)
     print command
@@ -89,6 +109,7 @@ if __name__=="__main__":
     parser.add_argument('--prefix',   "-p", help="A file prefix.  Will be prepended to all model files created during cascade generation.", default="test" )
     parser.add_argument('--order',    "-o", help="mitlm option: Maximum order of the joint N-gram LM", default=6 )
     parser.add_argument('--smoothing',"-s", help="mitlm option: Specify smoothing algorithms.  (ML, FixKN, FixModKN, FixKN#, KN, ModKN, KN#)", default="FixKN" )
+    parser.add_argument('--unifycase',"-l", help="Unify character case for orthographies.  Makes all graphemes lowercase.", default=False, action="store_true")
     parser.add_argument('--verbose',  "-v", help='Verbose mode.', default=False, action="store_true")
     args = parser.parse_args()
 

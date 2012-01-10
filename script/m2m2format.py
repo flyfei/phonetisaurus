@@ -1,7 +1,7 @@
 #!/usr/bin/python
 import re, sys, os
 
-def m2m2Format( dict_file, prefix="test", graph_sep="", phon_sep=" ", entry_sep="\t", reverse=False, swap=False ):
+def m2m2Format( dict_file, prefix="test", graph_sep="", phon_sep=" ", entry_sep="\t", reverse=False, swap=False, unify_case=False ):
     """
       Format the raw dictionary file for the m2m alignment tool.
     """
@@ -13,7 +13,7 @@ def m2m2Format( dict_file, prefix="test", graph_sep="", phon_sep=" ", entry_sep=
 
     dict_file_fp = open( dict_file, "r" )
     train_file_fp = open( "PREFIX.train".replace("PREFIX",prefix), "w" )
-
+    chars = set([])
     for line in dict_file_fp:
         line = line.strip()
         line = line.decode("utf8")
@@ -21,17 +21,23 @@ def m2m2Format( dict_file, prefix="test", graph_sep="", phon_sep=" ", entry_sep=
         graphs = []; phons = [];
         
         word, pron = line.split(entry_sep)
+        if unify_case==True:
+            word = word.lower()
 
         if graph_sep=="":
             graphs = list(word)
         else:
             graphs = word.split(graph_sep)
+        for g in graphs:
+            chars.update( [ x for x in list(g) ])
 
         if phon_sep=="":
             phons = list(pron)
         else:
             phons = pron.split(phon_sep)
-        
+        for p in phons:
+            chars.update( [ x for x in list(p) ])
+
         if reverse==True:
             graphs.reverse()
             phons.reverse()
@@ -45,7 +51,7 @@ def m2m2Format( dict_file, prefix="test", graph_sep="", phon_sep=" ", entry_sep=
     dict_file_fp.close()
     train_file_fp.close()
 
-    return
+    return chars
 
 
 if __name__=="__main__":

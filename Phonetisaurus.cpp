@@ -26,7 +26,6 @@ Phonetisaurus::Phonetisaurus( const char* g2pmodel_file ) {
     sb   = "<s>";
     se   = "</s>";
     skip = "_";
-    tie  = "|";
     
     skipSeqs.insert(eps);
     skipSeqs.insert(sb);
@@ -37,6 +36,7 @@ Phonetisaurus::Phonetisaurus( const char* g2pmodel_file ) {
     g2pmodel = StdVectorFst::Read( g2pmodel_file );
 
     isyms = (SymbolTable*)g2pmodel->InputSymbols(); 
+    tie  = isyms->Find(1); //The separator symbol is reserved for index 1
 
     osyms = (SymbolTable*)g2pmodel->OutputSymbols(); 
     
@@ -56,7 +56,7 @@ void Phonetisaurus::loadClusters( ){
      subsequences generated during multiple-to-multiple alignment
     */
     
-    for( size_t i = 0; i < isyms->NumSymbols(); i++ ){
+    for( size_t i = 2; i < isyms->NumSymbols(); i++ ){
         string sym = isyms->Find( i );
         
         if( sym.find(tie) != string::npos ){
@@ -190,8 +190,7 @@ vector<PathData> Phonetisaurus::phoneticize( vector<string> entry, int nbest, in
     return pathfinder.paths;
 }
 
-
-void Phonetisaurus::printPaths( vector<PathData> paths, int nbest, string correct, string word ){
+bool Phonetisaurus::printPaths( vector<PathData> paths, int nbest, string correct, string word ){
     /*
      Convenience function to print out a path vector.
      Will print only the first N unique entries.
@@ -203,6 +202,7 @@ void Phonetisaurus::printPaths( vector<PathData> paths, int nbest, string correc
     int numseen = 0;
     string onepath;
     size_t k;
+    bool empty_path = true;
     for( k=0; k < paths.size(); k++ ){
         if ( k >= nbest )
             break;
@@ -213,7 +213,7 @@ void Phonetisaurus::printPaths( vector<PathData> paths, int nbest, string correc
                 replace( 
                         paths[k].path[j].begin(), 
                         paths[k].path[j].end(), 
-                        '|', 
+                        *tie.c_str(),
                         ' '
                         );
             onepath += paths[k].path[j];
@@ -221,7 +221,9 @@ void Phonetisaurus::printPaths( vector<PathData> paths, int nbest, string correc
             if( j != paths[k].path.size()-1 )
                 onepath += " ";
         }
-
+	if( onepath == "" )
+	  continue;
+	empty_path = false;
 	if( word != "" )
 	  cout << word << "\t";
         cout << paths[k].pathcost << "\t" << onepath;
@@ -230,6 +232,7 @@ void Phonetisaurus::printPaths( vector<PathData> paths, int nbest, string correc
         cout << endl;
         onepath = "";
     }
+    return empty_path;
 }
 
 
