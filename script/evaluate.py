@@ -1,6 +1,7 @@
 #!/usr/bin/python
 import re, operator, os
 from collections import defaultdict
+from calculateER import ErrorRater
 
 def process_testset( testfile, wordlist_out, reference_out ):
     """
@@ -40,18 +41,16 @@ def evaluate_testset( modelfile, wordlistfile, referencefile, hypothesisfile ):
     print command
     os.system(command)
     references = {}
-    correct = 0.
-    total   = 0.
     for entry in open(referencefile,"r"):
         parts = entry.strip().split("\t")
         word  = parts.pop(0)
         references[word] = parts
     for entry in open(hypothesisfile,"r"):
         word, score, hypothesis = entry.strip().split("\t")
-        if hypothesis in references[word]:
-            correct += 1.
-        total += 1.
-    print "Total words: %d\nCorrect: %d\nWER [1.0-(Correct/Total)]: %f" % (int(total), int(correct), (1.-(correct/total)))
+
+    PERcalculator = ErrorRater()
+    PERcalculator.compute_PER_phonetisaurus( hypothesisfile, referencefile, verbose=True )
+
     return
     
     
