@@ -24,6 +24,10 @@ def m2m2Format( dict_file, prefix="test", graph_sep="", phon_sep=" ", entry_sep=
         if unify_case==True:
             word = word.lower()
 
+        #We will map spaces, dashes, underscores, etc. categorically
+        # to "" during training.  These will be auto-mapped to <eps>
+        # during decoding.
+        word = word.replace(" ","").replace("_","").replace("-","")
         if graph_sep=="":
             graphs = list(word)
         else:

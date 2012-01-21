@@ -12,7 +12,7 @@ def trainModel( args ):
     """
     ascii = set([ chr(i) for i in xrange(33,127) ])
     #Default separators
-    multi_sep = "|"; io_sep  = "}"
+    multi_sep = "|"; io_sep  = "}"; null_sep = "_"
 
     check_prefix( args.prefix )
 
@@ -39,10 +39,16 @@ def trainModel( args ):
         print "Default symbol separator was found in training data.  Swapping:", io_sep, "->",
         io_sep = safe_chars.pop()
         print io_sep
+    if null_sep not in safe_chars:
+        print "Default nullChar for m2maligner was found in training data.  Swapping:", null_sep, "->",
+        null_sep = safe_chars.pop()
+        print null_sep
 
     #Build up the m2m-aligner command and run it
-    command = """m2m-aligner DELX DELY --maxX MAXX --maxY MAXY --maxFn MAXFN --sepInChar "CHARSEP" --sepChar " " -i PREFIX.train -o PREFIX.align""".\
-        replace("MAXX",str(args.maxX)).replace("MAXY",str(args.maxY)).replace("MAXFN",args.maxFn).replace("PREFIX",args.prefix).replace("CHARSEP",multi_sep)
+    command = """m2m-aligner DELX DELY --maxX MAXX --maxY MAXY --maxFn MAXFN --sepInChar "CHARSEP" --nullChar "NULLSEP" --sepChar " " -i PREFIX.train -o PREFIX.align""".\
+              replace("MAXX",str(args.maxX)).replace("MAXY",str(args.maxY)).\
+              replace("MAXFN",args.maxFn).replace("PREFIX",args.prefix).\
+              replace("CHARSEP",multi_sep).replace("NULLSEP", null_sep)
     if args.delX==True:
         command = command.replace("DELX","--delX")
     else:
@@ -69,7 +75,7 @@ def trainModel( args ):
     os.system(command)
 
     #Convert the LM to WFST format and compile it
-    arpa = Arpa2WFST( "PREFIX.arpa".replace("PREFIX",args.prefix), prefix=args.prefix, max_order=args.order, multi_sep=multi_sep, io_sep=io_sep )
+    arpa = Arpa2WFST( "PREFIX.arpa".replace("PREFIX",args.prefix), prefix=args.prefix, max_order=args.order, multi_sep=multi_sep, io_sep=io_sep, null_sep=null_sep )
     arpa.arpa2fst( )
     arpa.print_syms( arpa.ssyms, "%s.ssyms"%(args.prefix), reserved=[arpa.eps] )
     arpa.print_syms( arpa.isyms, "%s.isyms"%(args.prefix), reserved=[arpa.eps,arpa.multi_sep] )

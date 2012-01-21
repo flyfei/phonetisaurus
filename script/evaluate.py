@@ -26,7 +26,7 @@ def process_testset( testfile, wordlist_out, reference_out, verbose=False ):
     reference_ofp.close()
     return
 
-def evaluate_testset( modelfile, wordlistfile, referencefile, hypothesisfile, verbose=False ):
+def evaluate_testset( modelfile, wordlistfile, referencefile, hypothesisfile, verbose=False, ignore="", ignore_both=False, regex_ignore="" ):
     """
       Evaluate the Word Error Rate (WER) for the test set.
       Each word should only be evaluated once.  The word is counted as 
@@ -48,7 +48,7 @@ def evaluate_testset( modelfile, wordlistfile, referencefile, hypothesisfile, ve
     for entry in open(hypothesisfile,"r"):
         word, score, hypothesis = entry.strip().split("\t")
 
-    PERcalculator = ErrorRater()
+    PERcalculator = ErrorRater( ignore=ignore, ignore_both=ignore_both, regex_ignore=regex_ignore )
     PERcalculator.compute_PER_phonetisaurus( hypothesisfile, referencefile, verbose=verbose )
 
     return
@@ -63,6 +63,9 @@ if __name__=="__main__":
     parser.add_argument('--testfile',  "-t", help="The test file in dictionary format. 1 word, 1 pronunciation per line, separated by '\\t'.", required=True )
     parser.add_argument('--prefix',    "-p", help="Prefix used to generate the wordlist, hypothesis and reference files.  Defaults to 'test'.", required=False )
     parser.add_argument('--modelfile', "-m", help="Path to the phoneticizer model.", required=True )
+    parser.add_argument('--ignore', "-i", help="Ignore chars in list.  Chars should be ' ' separated.  Applied only to Hypotheses by default.", required=False, default="" )
+    parser.add_argument('--ignore_both', "-b", help="Ignore chars in --ignore both for Hypotheses AND References.", default=False, action="store_true" )
+    parser.add_argument('--regex_ignore', "-r", help="Ignore chars in the regex.  Applied only to Hypotheses by default.", required=False, default="" )
     parser.add_argument('--verbose',   "-v", help='Verbose mode.', default=False, action="store_true")
     args = parser.parse_args()
 
@@ -72,4 +75,8 @@ if __name__=="__main__":
     wordlist = "%s.words"%( args.prefix ); hyp_file = "%s.hyp"%(args.prefix); ref_file = "%s.ref"%(args.prefix)
     
     process_testset( args.testfile, wordlist, ref_file )
-    evaluate_testset( args.modelfile, wordlist, ref_file, hyp_file, verbose=args.verbose ) 
+    evaluate_testset( 
+        args.modelfile, wordlist, ref_file, 
+        hyp_file, verbose=args.verbose, ignore=args.ignore, 
+        ignore_both=args.ignore_both, regex_ignore=args.regex_ignore 
+        ) 

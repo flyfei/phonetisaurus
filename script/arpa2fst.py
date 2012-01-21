@@ -13,7 +13,7 @@ class Arpa2WFST( ):
              change the eps symbol - or you will be in for a world of hurt!
     """
 
-    def __init__( self, arpaifile, prefix="test", eps="<eps>", max_order=4, multi_sep="|", io_sep="}" ):
+    def __init__( self, arpaifile, prefix="test", eps="<eps>", max_order=4, multi_sep="|", io_sep="}", null_sep="_" ):
         self.arpaifile = arpaifile
         self.arpaofile = "PREFIX.fst.txt".replace("PREFIX",prefix)
         self.ssyms    = set([])
@@ -23,6 +23,7 @@ class Arpa2WFST( ):
         self.order    = 0
         self.multi_sep = multi_sep
         self.io_sep   = io_sep
+        self.null_sep = null_sep
         self.max_order = max_order
 
     def print_syms( self, syms, ofile, reserved=[] ):
@@ -57,9 +58,9 @@ class Arpa2WFST( ):
         itoks = isym.split(self.multi_sep)
         gtoks = []
         for t in itoks:
-            if not t=="_":
+            if not t==self.null_sep:
                 gtoks.append(t)
-        if not isym=="_":
+        if not isym==self.null_sep:
             isym = self.multi_sep.join(gtoks)
         else:
             isym = self.eps
