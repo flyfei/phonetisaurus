@@ -17,16 +17,9 @@ class M2MFstAligner {
     Note that this may include a combination of multi-symbol 
      subsequences depending on user specifications.
 
-    This is achieved using the following steps:
-     1. Generate 'FSA1' encoding all possible sequences,
-         through SEQ1, including any multi-symbol subsequences.
-     2. Generate 'FSA2' encoding all possible sequences,
-         through SEQ2, including any multi-symbol subsequences.
-     3. Generate a single-state loop FST 'M' encoding all 
-         possible symbol transductions between the component
-         symbols of SEQ1 and SEQ2, including any subsequences.
-     4. Compute the alignment FST, 
-           aFST = compose(compose(FSA1,M),FSA2)
+    This is achieved by simply generating the entire alignment
+     graph during a single nested loop through the two input 
+     sequences that are to be aligned.
 
     The user may optionally specify whether to allow deletions 
      for SEQ1 or SEQ2, as well as a maximum subsequence length 
