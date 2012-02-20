@@ -34,7 +34,7 @@ using namespace fst;
 
 struct PathData{
     vector<string> path;
-    TropicalWeight pathcost;
+    float pathcost;
 };
 
 class FstPathFinder{

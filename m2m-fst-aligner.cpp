@@ -37,7 +37,7 @@ int main( int argc, char* argv[] ){
   cout << "Starting EM..." << endl;
   fst_maker.maximization(false);
   cout << "Finished first iter..." << endl;
-  for( int i=1; i<=10; i++ ){
+  for( int i=1; i<=atoi(argv[3]); i++ ){
     cout << "ITERATION: " << i << endl;
     fst_maker.expectation();
     fst_maker.maximization(false);
@@ -47,9 +47,17 @@ int main( int argc, char* argv[] ){
   fst_maker.maximization(true);
 
   for( int i=0; i<fst_maker.fsas.size(); i++ ){
-    VectorFst<StdArc> fst;
-    Map( fst_maker.fsas[i], &fst, LogToStdMapper() );
-    fst_maker.write_alignment( fst, atoi(argv[2]) );
+    //VectorFst<StdArc> fst;
+    //Map( fst_maker.fsas[i], &fst, LogToStdMapper() );
+    vector<PathData> paths = fst_maker.write_alignment( i, atoi(argv[2]) );
+    for( int i=0; i<paths.size(); i++ ){
+      for( int j=0; j<paths[i].path.size(); j++ ){
+	cout << paths[i].path[j];
+	if( j<paths[i].path.size() )
+	  cout << " ";
+      }
+      cout << endl;
+    }
   }
   
   return 1;

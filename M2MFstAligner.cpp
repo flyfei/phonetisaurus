@@ -58,11 +58,11 @@ int M2MFstAligner::get_max_length( string joint_label ){
 }
 //End utility functions
 
-
+/*
 M2MFstAligner::M2MFstAligner( ){
   //Default constructor
 }
-
+*/
 M2MFstAligner::M2MFstAligner( bool _seq1_del, bool _seq2_del, int _seq1_max, int _seq2_max, 
 			      string _seq1_sep, string _seq2_sep, string _s1s2_sep, 
 			      string _eps, string _skip ){
@@ -148,11 +148,14 @@ void M2MFstAligner::Sequences2FST( VectorFst<LogArc>* fst, vector<string>* seq1,
 	    vector<string> subseq2( seq2->begin()+j, seq2->begin()+j+l );
 	    int is = isyms->AddSymbol(skip+s1s2_sep+vec2str(subseq2, seq2_sep));
 	    ostate = i*(seq2->size()+1) + (j+l);
-	    LogArc arc( is, is, LogWeight::Zero(), ostate );
+	    //LogArc arc( is, is, LogWeight::One().Value()*(l+1)*2, ostate );
+	    LogArc arc( is, is, 99, ostate );
 	    fst->AddArc( istate, arc );
-	    if( prev_alignment_model.find(arc.ilabel)==prev_alignment_model.end() ){
+	    if( prev_alignment_model.find(arc.ilabel)==prev_alignment_model.end() )
 	      prev_alignment_model.insert( pair<LogArc::Label,LogWeight>(arc.ilabel,arc.weight) );
-	    }
+	    else
+	      prev_alignment_model[arc.ilabel] = Plus(prev_alignment_model[arc.ilabel],arc.weight);
+	    total = Plus( total, arc.weight );
 	  }
 	}
 
@@ -163,11 +166,14 @@ void M2MFstAligner::Sequences2FST( VectorFst<LogArc>* fst, vector<string>* seq1,
 	    vector<string> subseq1( seq1->begin()+i, seq1->begin()+i+k );
 	    int is = isyms->AddSymbol(vec2str(subseq1, seq1_sep)+s1s2_sep+skip);
 	    ostate = (i+k)*(seq2->size()+1) + j;
-	    LogArc arc( is, is, LogWeight::Zero(), ostate );
+	    //LogArc arc( is, is, LogWeight::One().Value()*(k+1)*2, ostate );
+	    LogArc arc( is, is, 99, ostate );
 	    fst->AddArc( istate, arc );
-	    if( prev_alignment_model.find(arc.ilabel)==prev_alignment_model.end() ){
+	    if( prev_alignment_model.find(arc.ilabel)==prev_alignment_model.end() )
 	      prev_alignment_model.insert( pair<LogArc::Label,LogWeight>(arc.ilabel,arc.weight) );
-	    }
+	    else
+	      prev_alignment_model[arc.ilabel] = Plus(prev_alignment_model[arc.ilabel],arc.weight);
+	    total = Plus(total, arc.weight);
 	  }
 	}
 
@@ -179,17 +185,20 @@ void M2MFstAligner::Sequences2FST( VectorFst<LogArc>* fst, vector<string>* seq1,
 	    string s1 = vec2str(subseq1, seq1_sep);
 	    vector<string> subseq2( seq2->begin()+j, seq2->begin()+j+l );
 	    string s2 = vec2str(subseq2, seq2_sep);
+	    if( l>1 && k>1)
+	      continue;
 	    int is = isyms->AddSymbol(s1+s1s2_sep+s2);
 	    ostate = (i+k)*(seq2->size()+1) + (j+l);
-	    LogArc arc( is, is, LogWeight::One(), ostate );
+	    LogArc arc( is, is, LogWeight::One().Value()*(k+l), ostate );
 	    fst->AddArc( istate, arc );
 	    //During the initialization phase, just count non-eps transitions
 	    //We currently initialize to uniform probability so there is also 
             // no need to tally anything here.
-	    if( prev_alignment_model.find(arc.ilabel)==prev_alignment_model.end() ){
+	    if( prev_alignment_model.find(arc.ilabel)==prev_alignment_model.end() )
 	      prev_alignment_model.insert( pair<LogArc::Label,LogWeight>(arc.ilabel, arc.weight) );
-	      total = Plus( total, arc.weight );
-	    }
+	    else
+	      prev_alignment_model[arc.ilabel] = Plus(prev_alignment_model[arc.ilabel],arc.weight);
+	    total = Plus( total, arc.weight );
 	  }
 	}
       }
@@ -214,11 +223,12 @@ void M2MFstAligner::entry2alignfst( vector<string> seq1, vector<string> seq2 ){
   return;
 }
 
-void M2MFstAligner::maximization( bool lastiter ){
+float M2MFstAligner::maximization( bool lastiter ){
   //Maximization. Simple count normalization.  Probably get an improvement 
   // by using a more sophisticated regularization approach. 
   map<LogArc::Label,LogWeight>::iterator it;
-  cout << "Total: " << total << " Change: " << abs(total.Value()-prevTotal.Value()) << endl;
+  float change = abs(total.Value()-prevTotal.Value());
+  //cout << "Total: " << total << " Change: " << abs(total.Value()-prevTotal.Value()) << endl;
   prevTotal = total;
 
   //Normalize and iterate to the next model.  We apply it dynamically 
@@ -240,12 +250,18 @@ void M2MFstAligner::maximization( bool lastiter ){
   }
 
   total = LogWeight::Zero();
-  return;
+  return change;
 }
 
+int M2MFstAligner::num_fsas( ){
+  //A getter function because I'm retarded.
+  return fsas.size();
+}
 
-void M2MFstAligner::write_alignment( VectorFst<StdArc>& fst, int nbest ){
-  //Generic alignment writer
+vector<PathData> M2MFstAligner::write_alignment( int i, int nbest ){
+  //Generic alignment generator
+  VectorFst<StdArc> fst;
+  Map( fsas[i], &fst, LogToStdMapper() );
 
   for( StateIterator<VectorFst<StdArc> > siter(fst); !siter.Done(); siter.Next() ){
     StdArc::StateId q = siter.Value();
@@ -266,10 +282,17 @@ void M2MFstAligner::write_alignment( VectorFst<StdArc>& fst, int nbest ){
       // it makes sense for our first cut implementation.
       //In any case, this guarantees that M2MFstAligner produces results identical to those 
       // produced by m2m-aligner - but with a bit more reliability.
+      //UPDATE: this now produces a better alignment than m2m-aligner.  
+      //  The maxl heuristic is still in place.  The aligner will produce *better* 1-best alignments
+      //  *without* the maxl heuristic below, BUT this comes at the cost of producing a less 
+      //  flexible corpus.  That is, for a small training corpus like nettalk, if we use the 
+      //  best alignment we wind up with more 'chunks' and thus get a worse coverage for unseen 
+      //  data.  Using the aignment lattices to train the joint ngram model solves this problem.
+      //  Oh baby.  Can't wait to for everyone to see the paper!
       StdArc arc = aiter.Value();
       int maxl = get_max_length( isyms->Find(arc.ilabel) );
       if( maxl==-1 )
-	arc.weight = 999; 
+        arc.weight = 999; 
       else
 	arc.weight = alignment_model[arc.ilabel].Value() * maxl;
       if( arc.weight == LogWeight::Zero() )
@@ -291,20 +314,32 @@ void M2MFstAligner::write_alignment( VectorFst<StdArc>& fst, int nbest ){
   // user params didn't allow us to.  
   //Probably better to insert these where necessary
   // during initialization, regardless of user prefs.
-  if( shortest.NumStates()==0 )
-    return;
+  if( shortest.NumStates()==0 ){
+    vector<PathData> dummy;
+    return dummy;
+  }
   FstPathFinder pathfinder( skipSeqs );
   pathfinder.isyms = isyms;
   pathfinder.findAllStrings( shortest );
-  
+  /*
   for( int k=0; k < pathfinder.paths.size(); k++ ){
     for( int j=0; j < pathfinder.paths[k].path.size(); j++ ){
       cout << pathfinder.paths[k].path[j];
-      if( j<pathfinder.paths[k].path.size() )
+      if( j<pathfinder.paths[k].path.size()-1 )
 	cout << " ";
     }
     cout << endl;
   }
-  
+  */
+  return pathfinder.paths;
+}
+
+void M2MFstAligner::write_all_alignments( int nbest ){
+  //Convenience function for the python bindings
+  for( int i=0; i<fsas.size(); i++ ){
+    //VectorFst<StdArc> fst;
+    //Map( fsas[i], &fst, LogToStdMapper() );
+    write_alignment( i, nbest );
+  }
   return;
 }

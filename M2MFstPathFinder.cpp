@@ -88,7 +88,7 @@ void FstPathFinder::findAllStringsHelper(VectorFst<StdArc>& fst, int state, vect
         
         PathData pdata;
         pdata.path     = path;
-        pdata.pathcost = Times(cost,fst.Final(state));
+        pdata.pathcost = Times(cost,fst.Final(state)).Value();
         
         addOrDiscardPath( pdata );
         

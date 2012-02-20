@@ -7,8 +7,9 @@
 #include <fst/fstlib.h>
 #include <vector>
 #include "M2MFstPathFinder.hpp"
-using namespace fst;
+using namespace std;
 
+namespace fst{
 class M2MFstAligner {
   /*
     Read in pairs of sequences of the form SEQ1 and SEQ2 and 
@@ -42,6 +43,7 @@ public:
   //OpenFst stuff
   //These will be overwritten after each FST construction
   vector<VectorFst<LogArc> > fsas; 
+
   //This will be maintained for the life of object
   //These symbol tables will be maintained entire life of 
   // the object.  This will ensure that any resulting 'corpus' 
@@ -53,7 +55,7 @@ public:
   LogWeight prevTotal;
 
   //Constructors
-  M2MFstAligner( );
+  //M2MFstAligner( );
   M2MFstAligner( bool _seq1_del, bool _seq2_del, int _seq1_max, int _seq2_max, 
 		 string _seq1_sep, string _seq2_sep, string _s1s2_sep,
 		 string _eps, string _skip );
@@ -65,11 +67,15 @@ public:
   void entry2alignfst( vector<string> seq1, vector<string> seq2 );
   //The expectation routine
   void expectation( );
-  //The maximization routine
-  void maximization( bool lastiter );
+  //The maximization routine.  Returns the change since the last iteration
+  float maximization( bool lastiter );
   //Print out the EM-optimized alignment for the training data
-  void write_alignment( VectorFst<StdArc>& fst, int nbest );
+  vector<PathData> write_alignment( int i, int nbest );
+  //Convenience function to output all the alignments
+  void write_all_alignments( int nbest );
   //max routine
   int get_max_length( string joint_label );
+  int num_fsas( );
 };
+}
 #endif // M2MFSTALIGNER_H //

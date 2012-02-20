@@ -66,7 +66,7 @@ def trainModel( args ):
         os.system(command)
 
     #Format the m2m-aligner results for LM training
-    m2m2Corpus( "PREFIX.align".replace("PREFIX",args.prefix), prefix=args.prefix, multi_sep=multi_sep, io_sep=io_sep )
+    #m2m2Corpus( "PREFIX.align".replace("PREFIX",args.prefix), prefix=args.prefix, multi_sep=multi_sep, io_sep=io_sep )
     
     #Build up the mitlm command and run it
     command = "estimate-ngram -s SMOOTH -o ORDER -t PREFIX.corpus -wl PREFIX.arpa".\
