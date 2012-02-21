@@ -55,16 +55,22 @@ public:
   LogWeight prevTotal;
 
   //Constructors
-  //M2MFstAligner( );
+  M2MFstAligner( );
   M2MFstAligner( bool _seq1_del, bool _seq2_del, int _seq1_max, int _seq2_max, 
 		 string _seq1_sep, string _seq2_sep, string _s1s2_sep,
 		 string _eps, string _skip );
+  M2MFstAligner( string _model_file );
 
+  //Write an aligner model to disk.  Critical info is stored in the 
+  // the symbol table so that it can be restored when the model is loaded.
+  void write_model( string _model_name );
   //Transform a sequence pair into an equivalent multiple-to-multiple FST,
   // encoding all possible alignments between the two sequences
   void Sequences2FST( VectorFst<LogArc>* fst, vector<string>* seq1, vector<string>* seq2 );
+  void Sequences2FSTNoInit( VectorFst<LogArc>* fst, vector<string>* seq1, vector<string>* seq2 );
   //Initialize all of the training data
   void entry2alignfst( vector<string> seq1, vector<string> seq2 );
+  void entry2alignfstnoinit( vector<string> seq1, vector<string> seq2 );
   //The expectation routine
   void expectation( );
   //The maximization routine.  Returns the change since the last iteration
@@ -76,6 +82,7 @@ public:
   //max routine
   int get_max_length( string joint_label );
   int num_fsas( );
+  
 };
 }
 #endif // M2MFSTALIGNER_H //
