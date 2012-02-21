@@ -465,9 +465,9 @@ vector<PathData> M2MFstAligner::write_alignment( const VectorFst<LogArc>& ifst, 
 
 void M2MFstAligner::write_all_alignments( int nbest ){
   //Convenience function for the python bindings
-  for( int i=0; i<fsas.size(); i++ ){
+  for( int i=0; i<fsas.size(); i++ )
     write_alignment( fsas[i], nbest );
-  }
+
   return;
 }
 

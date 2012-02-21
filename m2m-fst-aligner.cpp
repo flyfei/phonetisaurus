@@ -47,16 +47,16 @@ int main( int argc, char* argv[] ){
   fst_maker.maximization(true);
 
   for( int i=0; i<fst_maker.fsas.size(); i++ ){
-    //VectorFst<StdArc> fst;
-    //Map( fst_maker.fsas[i], &fst, LogToStdMapper() );
-    vector<PathData> paths = fst_maker.write_alignment( i, atoi(argv[2]) );
-    for( int i=0; i<paths.size(); i++ ){
-      for( int j=0; j<paths[i].path.size(); j++ ){
-	cout << paths[i].path[j];
-	if( j<paths[i].path.size() )
-	  cout << " ";
+    for( int i=0; i<fst_maker.fsas.size(); i++ ){
+      vector<PathData> paths = fst_maker.write_alignment( fst_maker.fsas[i], 1 );
+      for( int i=0; i<paths.size(); i++ ){
+	for( int j=0; j<paths[i].path.size(); j++ ){
+	  cout << paths[i].path[j];
+	  if( j<paths[i].path.size() )
+	    cout << " ";
+	}
+	cout << endl;
       }
-      cout << endl;
     }
   }
   

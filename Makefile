@@ -27,4 +27,4 @@ phonetisaurus-g2p: FstPathFinder.o Phonetisaurus.o phonetisaurus-g2p.cpp
 	$(CC) $(EXTRA) $(POBJS) phonetisaurus-g2p.cpp -o phonetisaurus-g2p $(LIBS)
 
 clean:
-	rm $(OUT) $(TMP) 
+	rm $(OUT) $(TMP) M2MFstAligner_wrap.cxx M2MFstAligner.py _M2MFstAligner.so
