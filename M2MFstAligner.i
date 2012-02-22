@@ -2,7 +2,7 @@
 %{
 	#define SWIG_FILE_WITH_INIT
 	#include "M2MFstAligner.hpp"
-        #include "M2MFstPathFinder.hpp"
+        #include "FstPathFinder.hpp"
 %}
 %include "std_vector.i"
 %include "std_string.i"
@@ -11,4 +11,4 @@ namespace std {
   %template(VecPData)  vector<PathData>;
 }
 %include "M2MFstAligner.hpp"
-%include "M2MFstPathFinder.hpp"
+%include "FstPathFinder.hpp"

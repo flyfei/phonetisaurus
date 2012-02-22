@@ -6,7 +6,7 @@
  */
 #include <fst/fstlib.h>
 #include <vector>
-#include "M2MFstPathFinder.hpp"
+#include "FstPathFinder.hpp"
 using namespace std;
 
 namespace fst{
@@ -70,13 +70,15 @@ public:
   void Sequences2FSTNoInit( VectorFst<LogArc>* fst, vector<string>* seq1, vector<string>* seq2 );
   //Initialize all of the training data
   void entry2alignfst( vector<string> seq1, vector<string> seq2 );
-  void entry2alignfstnoinit( vector<string> seq1, vector<string> seq2 );
+  vector<PathData> entry2alignfstnoinit( vector<string> seq1, vector<string> seq2, int nbest, string lattice="" );
   //The expectation routine
   void expectation( );
   //The maximization routine.  Returns the change since the last iteration
   float maximization( bool lastiter );
   //Print out the EM-optimized alignment for the training data
-  vector<PathData> write_alignment( int i, int nbest );
+  vector<PathData> write_alignment( const VectorFst<LogArc>& ifst, int nbest );
+  //Write out the union of the weighted alignment lattices for the training corpus
+  void write_lattice( string lattice );
   //Convenience function to output all the alignments
   void write_all_alignments( int nbest );
   //max routine

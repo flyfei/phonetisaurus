@@ -85,12 +85,14 @@ M2MFstAligner::M2MFstAligner( bool _seq1_del, bool _seq2_del, int _seq1_max, int
   //Thus, in addition to eps->0, we reserve symbol ids 1-4 as well.
   isyms->AddSymbol(eps);
   isyms->AddSymbol(skip);
-  //If seq1_sep & seq2_sep are the same only one sym will be added
-  //  maybe we concat them with a ' ' instead.  Also should include
-  // symbols specifying other model params: deletions, max-subsequences, etc.
-  isyms->AddSymbol(seq1_sep);
-  isyms->AddSymbol(seq2_sep);
+  isyms->AddSymbol(seq1_sep+" "+seq2_sep);
   isyms->AddSymbol(s1s2_sep);
+  string s1_del_str = seq1_del ? "true" : "false";
+  string s2_del_str = seq2_del ? "true" : "false";
+  string s1_max_str = itoas(seq1_max);
+  string s2_max_str = itoas(seq2_max);
+  string model_params = s1_del_str + " " + s2_del_str + " " + s1_max_str + " " + s2_max_str;
+  isyms->AddSymbol( model_params );
   total     = LogWeight::Zero();
   prevTotal = LogWeight::Zero();
 }
@@ -106,17 +108,31 @@ M2MFstAligner::M2MFstAligner( string _model_file ){
   }      
   isyms = (SymbolTable*)model->InputSymbols();
   int i = 0;
-  seq1_max = 2;
-  seq2_max = 2;
-  seq1_del = false;
-  seq2_del = true;
-  eps      = isyms->Find(i);
+  eps      = isyms->Find(i);//Can't write '0' here for some reason...
   skip     = isyms->Find(1);
-  //need to fix this ASAP - handle possibility 
-  // that seq1_sep != seq2_sep
-  seq1_sep = isyms->Find(2);
-  seq2_sep = isyms->Find(2);
+  vector<string> seps = split( isyms->Find(2), " " );
+  seq1_sep = seps[0];
+  seq2_sep = seps[1];
   s1s2_sep = isyms->Find(3);
+  vector<string> params = split( isyms->Find(4), " " );
+  seq1_del = params[0].compare("true") ? false : true;
+  seq2_del = params[1].compare("true") ? false : true;
+  seq1_max = atoi(params[2].c_str());
+  seq2_max = atoi(params[3].c_str());
+  /*
+  cout << "0: " << isyms->Find(i) << endl;
+  cout << "1: " << isyms->Find(1) << endl;
+  cout << "2: " << isyms->Find(2) << endl;
+  cout << "3: " << isyms->Find(3) << endl;
+  cout << "4: " << isyms->Find(4) << endl;
+  cout << "seq1_del: " << seq1_del << endl;
+  cout << "seq2_del: " << seq2_del << endl;
+  cout << "seq1_max: " << seq1_max << endl;
+  cout << "seq2_max: " << seq2_max << endl;
+  cout << "seq1_sep: " << seq1_sep << endl;
+  cout << "seq2_sep: " << seq2_sep << endl;
+  cout << "s1s2_sep: " << s1s2_sep << endl;
+  */
 }
 
 void M2MFstAligner::write_model( string _model_file ){
@@ -336,13 +352,12 @@ void M2MFstAligner::entry2alignfst( vector<string> seq1, vector<string> seq2 ){
   return;
 }
 
-void M2MFstAligner::entry2alignfstnoinit( vector<string> seq1, vector<string> seq2 ){
+vector<PathData> M2MFstAligner::entry2alignfstnoinit( vector<string> seq1, vector<string> seq2, int nbest, string lattice ){
   VectorFst<LogArc> fst;
   Sequences2FSTNoInit( &fst, &seq1, &seq2 );
-  fsas.push_back(fst);
-  fst.SetInputSymbols(isyms);
-  fst.Write("fsa0.fst");
-  return;
+  if( lattice.compare("") != 0 )
+    fst.Write(lattice);
+  return write_alignment( fst, nbest );
 }
 
 float M2MFstAligner::maximization( bool lastiter ){
@@ -380,10 +395,10 @@ int M2MFstAligner::num_fsas( ){
   return fsas.size();
 }
 
-vector<PathData> M2MFstAligner::write_alignment( int i, int nbest ){
+vector<PathData> M2MFstAligner::write_alignment( const VectorFst<LogArc>& ifst, int nbest ){
   //Generic alignment generator
   VectorFst<StdArc> fst;
-  Map( fsas[i], &fst, LogToStdMapper() );
+  Map( ifst, &fst, LogToStdMapper() );
 
   for( StateIterator<VectorFst<StdArc> > siter(fst); !siter.Done(); siter.Next() ){
     StdArc::StateId q = siter.Value();
@@ -411,6 +426,8 @@ vector<PathData> M2MFstAligner::write_alignment( int i, int nbest ){
       //  best alignment we wind up with more 'chunks' and thus get a worse coverage for unseen 
       //  data.  Using the aignment lattices to train the joint ngram model solves this problem.
       //  Oh baby.  Can't wait to for everyone to see the paper!
+      //NOTE: this is going to fail if we encounter any alignments in a new test item that never
+      // occurred in the original model.
       StdArc arc = aiter.Value();
       int maxl = get_max_length( isyms->Find(arc.ilabel) );
       if( maxl==-1 )
@@ -443,25 +460,46 @@ vector<PathData> M2MFstAligner::write_alignment( int i, int nbest ){
   FstPathFinder pathfinder( skipSeqs );
   pathfinder.isyms = isyms;
   pathfinder.findAllStrings( shortest );
-  /*
-  for( int k=0; k < pathfinder.paths.size(); k++ ){
-    for( int j=0; j < pathfinder.paths[k].path.size(); j++ ){
-      cout << pathfinder.paths[k].path[j];
-      if( j<pathfinder.paths[k].path.size()-1 )
-	cout << " ";
-    }
-    cout << endl;
-  }
-  */
   return pathfinder.paths;
 }
 
 void M2MFstAligner::write_all_alignments( int nbest ){
   //Convenience function for the python bindings
   for( int i=0; i<fsas.size(); i++ ){
-    //VectorFst<StdArc> fst;
-    //Map( fsas[i], &fst, LogToStdMapper() );
-    write_alignment( i, nbest );
+    write_alignment( fsas[i], nbest );
   }
+  return;
+}
+
+void M2MFstAligner::write_lattice( string lattice ){
+  //Write out the entire training set in lattice format
+  //Perform the union first.  This output can then 
+  // be plugged directly in to a counter to obtain expected
+  // alignment counts for the EM-trained corpus.  Yields 
+  // far higher-quality joint n-gram models, which are also
+  // more robust for smaller training corpora.
+  //Make sure you call this BEFORE any call to 
+  // write_all_alignments
+  // as the latter function will override some of the weights
+
+  //The 'Union' operation is unreasonably slow for large numbers
+  // of inputs.  Even the lazy operation mentioned on the OpenFst
+  // forum is far too slow to be of practical use for more than 
+  // 1000 joins.  
+  //THe problem appears to be that some kind of exhaustive search
+  // is being performed at *each* iteration.  Thus it becomes more
+  // and more expensive to add one more fst to the union with each
+  // successive iteration.
+  //I don't think that there is any reason for this to be true, more
+  // likely it is just an artifact of using some standard operation
+  // combined with my strange use case
+  VectorFst<LogArc> ufst;
+  for( int i=0; i<fsas.size(); i++ ){
+    if( i%100==0 )
+      cout << "Data index: " << i << endl;
+    Union(&ufst, fsas[i]);
+  }
+  ufst.SetInputSymbols(isyms);
+  ufst.Write(lattice);
   return;
 }

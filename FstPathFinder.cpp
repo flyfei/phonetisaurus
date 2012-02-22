@@ -36,7 +36,7 @@ FstPathFinder::FstPathFinder( set<string> skipset ) {
     skipSeqs = skipset;
 }
 
-void FstPathFinder::findAllStrings( StdVectorFst& fst ) {
+void FstPathFinder::findAllStrings( VectorFst<StdArc>& fst ) {
     /*
      Main search function.  Initiates the WFSA traversal.
      We are making three potentially dangerous assumptions 
@@ -55,7 +55,8 @@ void FstPathFinder::findAllStrings( StdVectorFst& fst ) {
      */
     
     vector<string> path;
-    isyms = (SymbolTable*)fst.InputSymbols();
+    if( fst.InputSymbols()!=NULL )
+      isyms = (SymbolTable*)fst.InputSymbols();
     findAllStringsHelper( fst, fst.Start(), path, TropicalWeight::One() );
     
     return;
@@ -78,7 +79,7 @@ void FstPathFinder::addOrDiscardPath( PathData pdata ) {
     return;
 }
 
-void FstPathFinder::findAllStringsHelper(StdVectorFst& fst, int state, vector<string>& path, TropicalWeight cost ) {
+void FstPathFinder::findAllStringsHelper(VectorFst<StdArc>& fst, int state, vector<string>& path, TropicalWeight cost ) {
     /*
      Recursively traverse the WFSA and build up a vector of 
       unique paths and associated costs.
@@ -88,7 +89,7 @@ void FstPathFinder::findAllStringsHelper(StdVectorFst& fst, int state, vector<st
         
         PathData pdata;
         pdata.path     = path;
-        pdata.pathcost = Times(cost,fst.Final(state));
+        pdata.pathcost = Times(cost,fst.Final(state)).Value();
         
         addOrDiscardPath( pdata );
         
@@ -97,7 +98,7 @@ void FstPathFinder::findAllStringsHelper(StdVectorFst& fst, int state, vector<st
         return;
     }
 
-    for( ArcIterator<StdVectorFst> iter(fst,state); !iter.Done(); iter.Next() ) {
+    for( ArcIterator<VectorFst<StdArc> > iter(fst,state); !iter.Done(); iter.Next() ) {
         StdArc arc = iter.Value();
 
         string symbol = isyms->Find( arc.ilabel );

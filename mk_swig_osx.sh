@@ -7,6 +7,6 @@ pyL=/opt/local/Library/Frameworks/Python.framework/Versions/2.7/lib
 echo "Generating SWIG code..."
 swig -c++ -python M2MFstAligner.i
 echo "Compiling..."
-g++  -O3 -c -fPIC -I${pyH} M2MFstAligner_wrap.cxx M2MFstAligner.cpp M2MFstPathFinder.cpp -lfst -ldl 
+g++  -O3 -c -fPIC -I${pyH} M2MFstAligner_wrap.cxx M2MFstAligner.cpp FstPathFinder.cpp -lfst -ldl 
 echo "Building the shared object..."
-g++  -O3 -L${pyL} -shared -lc -Wl,-install_name,_M2MFstAligner.so -o _M2MFstAligner.so  M2MFstAligner.o M2MFstPathFinder.o M2MFstAligner_wrap.o -lfst -ldl -lpython2.7
+g++  -O3 -L${pyL} -shared -lc -Wl,-install_name,_M2MFstAligner.so -o _M2MFstAligner.so  M2MFstAligner.o FstPathFinder.o M2MFstAligner_wrap.o -lfst -ldl -lpython2.7
