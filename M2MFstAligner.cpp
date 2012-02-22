@@ -88,13 +88,14 @@ M2MFstAligner::M2MFstAligner( bool _seq1_del, bool _seq2_del, int _seq1_max, int
   //Thus, in addition to eps->0, we reserve symbol ids 1-4 as well.
   isyms->AddSymbol(eps);
   isyms->AddSymbol(skip);
-  isyms->AddSymbol(seq1_sep+" "+seq2_sep);
+  //The '_' as a separator here is dangerous
+  isyms->AddSymbol(seq1_sep+"_"+seq2_sep);
   isyms->AddSymbol(s1s2_sep);
   string s1_del_str = seq1_del ? "true" : "false";
   string s2_del_str = seq2_del ? "true" : "false";
   string s1_max_str = itoas(seq1_max);
   string s2_max_str = itoas(seq2_max);
-  string model_params = s1_del_str + " " + s2_del_str + " " + s1_max_str + " " + s2_max_str;
+  string model_params = s1_del_str + "_" + s2_del_str + "_" + s1_max_str + "_" + s2_max_str;
   isyms->AddSymbol( model_params );
   total     = LogWeight::Zero();
   prevTotal = LogWeight::Zero();
@@ -113,11 +114,11 @@ M2MFstAligner::M2MFstAligner( string _model_file ){
   int i = 0;
   eps      = isyms->Find(i);//Can't write '0' here for some reason...
   skip     = isyms->Find(1);
-  vector<string> seps = split( isyms->Find(2), " " );
+  vector<string> seps = split( isyms->Find(2), "_" );
   seq1_sep = seps[0];
   seq2_sep = seps[1];
   s1s2_sep = isyms->Find(3);
-  vector<string> params = split( isyms->Find(4), " " );
+  vector<string> params = split( isyms->Find(4), "_" );
   seq1_del = params[0].compare("true") ? false : true;
   seq2_del = params[1].compare("true") ? false : true;
   seq1_max = atoi(params[2].c_str());
@@ -506,6 +507,7 @@ void M2MFstAligner::write_lattice( string lattice ){
   // rational FST still performs very poorly in the log semiring.
   //Presumably it's running push or something at each step.  It
   // should be fine to do that just once at the end.
+  //Rolling our own union turns out to be MUCH faster.
   VectorFst<LogArc> ufst;
   ufst.AddState();
   ufst.SetStart(0);
@@ -527,8 +529,11 @@ void M2MFstAligner::write_lattice( string lattice ){
     }
     total_states += fsas[i].NumStates()-1;
   }
+  //Normalize weights
   Push( &ufst, REWEIGHT_TO_INITIAL );
+  //Write the resulting lattice to disk
   ufst.Write(lattice);
+  //Write the syms table too.
   isyms->WriteText("lattice.syms");
   return;
 }
