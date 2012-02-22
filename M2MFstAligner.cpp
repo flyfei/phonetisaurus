@@ -51,7 +51,9 @@ int M2MFstAligner::get_max_length( string joint_label ){
   vector<string> s1 = split( parts[0], seq1_sep );
   vector<string> s2 = split( parts[1], seq2_sep );
   int m = max(s1.size(),s2.size());
-  //Probably want to rethink this placement...
+  //Probably want to rethink this placement..
+  //At this point the model should not contain any of these
+  // transitions anyway.  So this is redundant...
   if( s1.size()==s2.size() && s1.size()>1 )
     m = -1;
   return m;
@@ -65,7 +67,7 @@ M2MFstAligner::M2MFstAligner( ){
 
 M2MFstAligner::M2MFstAligner( bool _seq1_del, bool _seq2_del, int _seq1_max, int _seq2_max, 
 			      string _seq1_sep, string _seq2_sep, string _s1s2_sep, 
-			      string _eps, string _skip ){
+			      string _eps, string _skip, bool _penalize ){
   //Base constructor.  Determine whether or not to allow deletions in seq1 and seq2
   // as well as the maximum allowable subsequence size.
   seq1_del = _seq1_del;
@@ -75,6 +77,7 @@ M2MFstAligner::M2MFstAligner( bool _seq1_del, bool _seq2_del, int _seq1_max, int
   seq1_sep = _seq1_sep;
   seq2_sep = _seq2_sep;
   s1s2_sep = _s1s2_sep;
+  penalize  = _penalize;
   eps      = _eps;
   skip     = _skip;
   skipSeqs.insert(eps);
@@ -430,10 +433,22 @@ vector<PathData> M2MFstAligner::write_alignment( const VectorFst<LogArc>& ifst, 
       // occurred in the original model.
       StdArc arc = aiter.Value();
       int maxl = get_max_length( isyms->Find(arc.ilabel) );
-      if( maxl==-1 )
+      if( maxl==-1 ){
         arc.weight = 999; 
-      else
-	arc.weight = alignment_model[arc.ilabel].Value() * maxl;
+      }else{
+	//Optionally penalize m-to-1 / 1-to-m links.  This produces 
+	// WORSE 1-best alignments, but results in better joint n-gram 
+	// models for small training corpora when using only the 1-best
+	// alignment.  By further favoring 1-to-1 alignments the 1-best
+	// alignment corpus results in a more flexible joint n-gram model
+	// with regard to previously unseen data.  
+	if( penalize==true ){
+	  arc.weight = alignment_model[arc.ilabel].Value() * maxl;
+	}else{
+	//For larger corpora this is probably unnecessary.
+	  arc.weight = alignment_model[arc.ilabel].Value();
+	}
+      }
       if( arc.weight == LogWeight::Zero() )
 	arc.weight = 999;
       aiter.SetValue(arc);
@@ -471,6 +486,11 @@ void M2MFstAligner::write_all_alignments( int nbest ){
   return;
 }
 
+vector<PathData> M2MFstAligner::write_alignment_wrapper( int i, int nbest ){
+  //Wrapper for the python bindings.
+  return write_alignment( fsas[i], nbest );
+}
+
 void M2MFstAligner::write_lattice( string lattice ){
   //Write out the entire training set in lattice format
   //Perform the union first.  This output can then 
@@ -482,24 +502,33 @@ void M2MFstAligner::write_lattice( string lattice ){
   // write_all_alignments
   // as the latter function will override some of the weights
 
-  //The 'Union' operation is unreasonably slow for large numbers
-  // of inputs.  Even the lazy operation mentioned on the OpenFst
-  // forum is far too slow to be of practical use for more than 
-  // 1000 joins.  
-  //THe problem appears to be that some kind of exhaustive search
-  // is being performed at *each* iteration.  Thus it becomes more
-  // and more expensive to add one more fst to the union with each
-  // successive iteration.
-  //I don't think that there is any reason for this to be true, more
-  // likely it is just an artifact of using some standard operation
-  // combined with my strange use case
+  //Chaining the standard Union operation, including using a 
+  // rational FST still performs very poorly in the log semiring.
+  //Presumably it's running push or something at each step.  It
+  // should be fine to do that just once at the end.
   VectorFst<LogArc> ufst;
+  ufst.AddState();
+  ufst.SetStart(0);
+  int total_states = 0;
   for( int i=0; i<fsas.size(); i++ ){
-    if( i%100==0 )
-      cout << "Data index: " << i << endl;
-    Union(&ufst, fsas[i]);
+    TopSort(&fsas[i]);
+    for( StateIterator<VectorFst<LogArc> > siter(fsas[i]); !siter.Done(); siter.Next() ){
+      LogArc::StateId q = siter.Value();
+      LogArc::StateId r;
+      if( q==0 ) r = 0;
+      else       r = ufst.AddState();
+
+      for( ArcIterator<VectorFst<LogArc> > aiter(fsas[i],q); !aiter.Done(); aiter.Next() ){
+	const LogArc& arc = aiter.Value();
+	ufst.AddArc( r, LogArc( arc.ilabel, arc.ilabel, arc.weight, arc.nextstate+total_states ) );
+      }
+      if( fsas[i].Final(q)!=LogWeight::Zero() )
+	ufst.SetFinal( r, LogWeight::One() );
+    }
+    total_states += fsas[i].NumStates()-1;
   }
-  ufst.SetInputSymbols(isyms);
+  Push( &ufst, REWEIGHT_TO_INITIAL );
   ufst.Write(lattice);
+  isyms->WriteText("lattice.syms");
   return;
 }

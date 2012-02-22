@@ -35,7 +35,7 @@ def write_aligned_training_data( aligner, aligned_file, nbest=1 ):
     print "Writing %d-best alignments to file: %s." % (nbest, aligned_file)
     ofp = open(aligned_file,"w")
     for i in xrange(aligner.num_fsas()):
-        results = aligner.write_alignment( i, nbest )
+        results = aligner.write_alignment_wrapper( i, nbest )
         for result in results:
             ofp.write("%s\n"%" ".join(result.path))
     ofp.close()
@@ -62,7 +62,7 @@ if __name__=="__main__":
     import sys, argparse
     from argparse import RawTextHelpFormatter
 
-    example2 = """Train a model:\n\t%s --align train.txt -m1 2 -m2 2 --write_model train.model.fst --write_align train.aligned""" % sys.argv[0]
+    example2 = """Train a model:\n\t%s --align train.txt -s2 --write_model train.model.fst --write_align train.aligned""" % sys.argv[0]
     example1 = """Align a sequence:\n\t%s --model model.fst --string1 "aback" --string2 "x b @ k" --nbest 2""" % sys.argv[0]
     examples = example1+"\n\n"+example2
     parser = argparse.ArgumentParser(description=examples, formatter_class=RawTextHelpFormatter)
@@ -87,6 +87,7 @@ if __name__=="__main__":
     parser.add_argument('--threshold',      "-t", help="Threshold for EM training. Defaults to '.001'.", default=.001, type=float, required=False )
     parser.add_argument('--string1',       "-r1", help="Input string1 to align.", required=False )
     parser.add_argument('--string2',       "-r2", help="Input string2 to align.", required=False )
+    parser.add_argument('--no_penalty',    "-np", help="By default multi-subsequences are penalized during decoding.  Not needed for large training corpora.  Defaults to 'False'.", required=False, default=False, action="store_true" )
     parser.add_argument('--write_lattice', "-l",  help="Write out the union of the weighted alignment lattices from the training corpus.", default=None, required=False )
     parser.add_argument('--prefix',    "-p", help="Prefix used to generate the model and alignment files.  Defaults to 'test'.", required=False, default="test" )
     parser.add_argument('--verbose',   "-v", help='Verbose mode.', default=False, action="store_true")
@@ -108,7 +109,8 @@ if __name__=="__main__":
             args.seq2_sep, 
             args.s1s2_sep, 
             args.eps, 
-            args.skip
+            args.skip,
+            args.no_penalty
         )
         #Run the EM training
         train_aligner( 

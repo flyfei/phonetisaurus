@@ -6,8 +6,8 @@ unamestr=`uname`
 if [[ "${unamestr}" == "Linux" ]];
 then
     swig -c++ -python M2MFstAligner.i
-    g++  -Ofast -c -fPIC -I/usr/include/python2.7 M2MFstAligner_wrap.cxx M2MFstAligner.cpp FstPathFinder.cpp -lfst -ldl 
-    g++  -Ofast -shared -Wl,-soname,_M2MFstAligner.so -o _M2MFstAligner.so  M2MFstAligner.o FstPathFinder.o M2MFstAligner_wrap.o -lfst -ldl
+    g++  -O3 -c -fPIC -I/usr/include/python2.7 M2MFstAligner_wrap.cxx M2MFstAligner.cpp FstPathFinder.cpp -lfst -ldl 
+    g++  -O3 -shared -Wl,-soname,_M2MFstAligner.so -o _M2MFstAligner.so  M2MFstAligner.o FstPathFinder.o M2MFstAligner_wrap.o -lfst -ldl
 elif [[ "${unamestr}" == "Darwin" ]];
 then
     #May need to change these!

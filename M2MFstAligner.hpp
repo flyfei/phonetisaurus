@@ -37,6 +37,7 @@ public:
   string s1s2_sep;
   string eps;
   string skip;
+  bool   penalize;
   vector<LogWeight> alpha, beta;
   //This will be used during decoding to clean the paths
   set<string>   skipSeqs;
@@ -58,7 +59,7 @@ public:
   M2MFstAligner( );
   M2MFstAligner( bool _seq1_del, bool _seq2_del, int _seq1_max, int _seq2_max, 
 		 string _seq1_sep, string _seq2_sep, string _s1s2_sep,
-		 string _eps, string _skip );
+		 string _eps, string _skip, bool _penalize );
   M2MFstAligner( string _model_file );
 
   //Write an aligner model to disk.  Critical info is stored in the 
@@ -71,6 +72,7 @@ public:
   //Initialize all of the training data
   void entry2alignfst( vector<string> seq1, vector<string> seq2 );
   vector<PathData> entry2alignfstnoinit( vector<string> seq1, vector<string> seq2, int nbest, string lattice="" );
+  vector<PathData> write_alignment_wrapper( int i, int nbest );
   //The expectation routine
   void expectation( );
   //The maximization routine.  Returns the change since the last iteration
