@@ -1,21 +1,35 @@
 #!/usr/bin/python
-import re, os, commands, platform
-
-#2011-04-12 Copyright, Josef R. Novak, all rights reserved.
+#    Copyright 2011-2012 Josef Robert Novak
 #
-#This script is an example of what can be done with a G2P system.
+#    This file is part of Phonetisaurus.
 #
-#It plugs G2P hypotheses directly into the flite phoneticizer to 
-# illustrate the functionality of the system.
+#    Phonetisaurus is free software: you can redistribute it 
+#    and/or modify it under the terms of the GNU General Public 
+#    License as published by the Free Software Foundation, either 
+#    version 3 of the License, or (at your option) any later version.
 #
-#The script requires that both phonetisaurus-g2p and the flite 
-# synthesizer are installed and available from your $PATH variable.
+#    Foobar is distributed in the hope that it will be useful, but 
+#    WITHOUT ANY WARRANTY; without even the implied warranty of 
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU 
+#    General Public License for more details.
 #
-#Flite can be obtained here: 
+#    You should have received a copy of the GNU General Public 
+#    License along with Foobar. If not, see http://www.gnu.org/licenses/.
+#  -----------------
+#    This script is an example of what can be done with a G2P system.
+#    It plugs G2P hypotheses directly into the flite phoneticizer to 
+#     illustrate the functionality of the system.
+#
+#    The script requires that both phonetisaurus-g2p and the flite 
+#     synthesizer are installed and available from your $PATH variable.
+#
+#    Flite can be obtained here: 
 #     http://www.speech.cs.cmu.edu/flite/
 #
-#For best results your G2P model should be trained on the accented
-# version of the CMUDICT.
+#    For best results your G2P model should be trained on the accented
+#     version of the CMUDICT.
+import re, os, commands, platform
+
 
 def phoneticizeWithFlite( args ):
     """
