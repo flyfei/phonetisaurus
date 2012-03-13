@@ -1,22 +1,6 @@
 /*
-    M2MFstAligner.cpp 
-
-    Copyright 2011-2012 Josef Robert Novak
-
-    This file is part of Phonetisaurus.
-
-    Phonetisaurus is free software: you can redistribute it 
-    and/or modify it under the terms of the GNU General Public 
-    License as published by the Free Software Foundation, either 
-    version 3 of the License, or (at your option) any later version.
-
-    Phonetisaurus is distributed in the hope that it will be useful, but 
-    WITHOUT ANY WARRANTY; without even the implied warranty of 
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU 
-    General Public License for more details.
-
-    You should have received a copy of the GNU General Public 
-    License along with Phonetisaurus. If not, see http://www.gnu.org/licenses/.
+ *  M2MFstAligner.cpp 
+ *
  */
 #include <fst/fstlib.h>
 #include <iostream>
@@ -70,7 +54,7 @@ int M2MFstAligner::get_max_length( string joint_label ){
   //Probably want to rethink this placement..
   //At this point the model should not contain any of these
   // transitions anyway.  So this is redundant...
-  if( s1.size()==s2.size() && s1.size()>1 )
+  if( s1.size()>1 && s2.size()>1 )
     m = -1;
   return m;
 }
@@ -226,6 +210,7 @@ void M2MFstAligner::Sequences2FST( VectorFst<LogArc>* fst, vector<string>* seq1,
 	    ostate = i*(seq2->size()+1) + (j+l);
 	    //LogArc arc( is, is, LogWeight::One().Value()*(l+1)*2, ostate );
 	    LogArc arc( is, is, 99, ostate );
+	    //LogArc arc( is, is, LogWeight::Zero(), ostate );
 	    fst->AddArc( istate, arc );
 	    if( prev_alignment_model.find(arc.ilabel)==prev_alignment_model.end() )
 	      prev_alignment_model.insert( pair<LogArc::Label,LogWeight>(arc.ilabel,arc.weight) );
@@ -244,6 +229,7 @@ void M2MFstAligner::Sequences2FST( VectorFst<LogArc>* fst, vector<string>* seq1,
 	    ostate = (i+k)*(seq2->size()+1) + j;
 	    //LogArc arc( is, is, LogWeight::One().Value()*(k+1)*2, ostate );
 	    LogArc arc( is, is, 99, ostate );
+	    //LogArc arc( is, is, LogWeight::Zero(), ostate );
 	    fst->AddArc( istate, arc );
 	    if( prev_alignment_model.find(arc.ilabel)==prev_alignment_model.end() )
 	      prev_alignment_model.insert( pair<LogArc::Label,LogWeight>(arc.ilabel,arc.weight) );
@@ -266,6 +252,7 @@ void M2MFstAligner::Sequences2FST( VectorFst<LogArc>* fst, vector<string>* seq1,
 	    int is = isyms->AddSymbol(s1+s1s2_sep+s2);
 	    ostate = (i+k)*(seq2->size()+1) + (j+l);
 	    LogArc arc( is, is, LogWeight::One().Value()*(k+l), ostate );
+	    //LogArc arc( is, is, LogWeight::One().Value(), ostate );
 	    fst->AddArc( istate, arc );
 	    //During the initialization phase, just count non-eps transitions
 	    //We currently initialize to uniform probability so there is also 
@@ -286,8 +273,11 @@ void M2MFstAligner::Sequences2FST( VectorFst<LogArc>* fst, vector<string>* seq1,
   fst->SetFinal( ((seq1->size()+1)*(seq2->size()+1))-1, LogWeight::One() );
   //Unless seq1_del==true && seq2_del==true we will have unconnected states
   // thus we need to run connect to clean out these states
+  //fst->SetInputSymbols(isyms);
+  //fst->Write("right.nc.fsa");
   if( seq1_del==false or seq2_del==false )
     Connect(fst);
+  //fst->Write("right.c.fsa");
   return;
 }
 
@@ -459,15 +449,15 @@ vector<PathData> M2MFstAligner::write_alignment( const VectorFst<LogArc>& ifst, 
 	// alignment.  By further favoring 1-to-1 alignments the 1-best
 	// alignment corpus results in a more flexible joint n-gram model
 	// with regard to previously unseen data.  
-	if( penalize==true ){
-	  arc.weight = alignment_model[arc.ilabel].Value() * maxl;
-	}else{
+	//if( penalize==true ){
+	arc.weight = alignment_model[arc.ilabel].Value() * maxl;
+	//}else{
 	//For larger corpora this is probably unnecessary.
-	  arc.weight = alignment_model[arc.ilabel].Value();
-	}
+	//arc.weight = alignment_model[arc.ilabel].Value();
+	//}
       }
       if( arc.weight == LogWeight::Zero() )
-	arc.weight = 999;
+      	arc.weight = 999;
       aiter.SetValue(arc);
     }
   }

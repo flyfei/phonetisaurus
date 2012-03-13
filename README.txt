@@ -2,6 +2,10 @@ Phonetisaurus
 2010-10-27
 Josef Robert Novak
 
+UPDATED: 2012-03-13 Josef R. Novak
+m2m-aligner is no longer required.  The native WFST-based aligner should
+be preferred as it is faster and produces more accurate alignments.
+
 UPDATED: 2011-04-07 Josef R. Novak
 The python 'decoder' is now obsolete.  Use the C++ tool.
 
@@ -12,18 +16,36 @@ Also wrote new model-training scripts.
 It should be much easier to train and test models now.
 
 REQUIREMENTS
-m2m-aligner and estimate-ngram must be accessibile from your ${PATH}
-variable.  If you have not installed them, you can obtain the source
-code from the following locations,
+estimate-ngram must be accessibile from your ${PATH}
+variable.  If you have not installed it, you can obtain the source
+code from the following locations.  
 
-m2m-aligner:
- http://code.google.com/p/m2m-aligner/
 mitlm:
  https://code.google.com/p/mitlm/
 
+The m2m-aligner is also a nice tool and is supported as an alternative
+but support is now deprecated in favor of the native implementation.
+m2m-aligner:
+ http://code.google.com/p/m2m-aligner/
   
+RECOMMENDED INSTALL:
+$ make -j
+$ ./mk_swig.sh
 
-INSTALL
+ALIGN A DATABASE
+$ ./m2m-aligner.py --align data/g014a2.train.bsf -s2 -s1 --write_align script/test/test.corpus -m1 2 -m2 2
+
+TRAIN A MODEL
+$ cd script
+$ ./train-model.py --dict ../data/g014a2.train.bsf --prefix test/test --order 7 --noalign --palign
+
+TEST A MODEL
+$ ./evaluate.py --modelfile test/test.fst --testfile ../data/g014a2.test.tabbed.bsf --prefix test/test
+
+
+-----
+
+OLD INSTALL
 $ make
 
 TRAIN A MODEL

@@ -82,7 +82,8 @@ def trainModel( args ):
         os.system(command)
 
     #Format the m2m-aligner results for LM training
-    m2m2Corpus( "PREFIX.align".replace("PREFIX",args.prefix), prefix=args.prefix, multi_sep=multi_sep, io_sep=io_sep )
+    if args.palign==False:
+        m2m2Corpus( "PREFIX.align".replace("PREFIX",args.prefix), prefix=args.prefix, multi_sep=multi_sep, io_sep=io_sep )
     
     #Build up the mitlm command and run it
     command = "estimate-ngram -s SMOOTH -o ORDER -t PREFIX.corpus -wl PREFIX.arpa".\
@@ -125,6 +126,7 @@ if __name__=="__main__":
     parser.add_argument('--delX',     "-a", help="m2m-aligner option: Allow deletions of left-hand (input/grapheme) tokens.", default=False, action="store_true")
     parser.add_argument('--delY',     "-b", help="m2m-aligner option: Allow deletions of right-hand (output/phoneme) tokens.", default=False, action="store_true")
     parser.add_argument('--noalign',  "-n", help="Skip the alignment step.  Useful for testing different N-gram models.", default=False, action="store_true")
+    parser.add_argument('--palign',   "-pl", help="Use the results of the new WFST aligner (faster and more efficient).", default=False, action="store_true")
     parser.add_argument('--maxX',     "-x", help="m2m-aligner option: Maximum substring length for left-hand (input/grapheme) tokens.", default=2 )
     parser.add_argument('--maxY',     "-y", help="m2m-aligner option: Maximum substring length for right-hand (outut/phoneme) tokens.", default=2 )
     parser.add_argument('--maxFn',    "-c", help="m2m-aligner option: Maximization function.  May be one of 'conYX', 'conXY', or 'joint'.", default="joint" )
