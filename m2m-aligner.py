@@ -14,7 +14,8 @@
 #    General Public License for more details.
 #
 #    You should have received a copy of the GNU General Public 
-#    License along with Phonetisaurus. If not, see http://www.gnu.org/licenses/.from M2MFstAligner import M2MFstAligner
+#    License along with Phonetisaurus. If not, see http://www.gnu.org/licenses/.
+from M2MFstAligner import M2MFstAligner
 import sys
 
 def splitter( part, sep ):
