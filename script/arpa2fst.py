@@ -97,7 +97,7 @@ class Arpa2WFST( ):
         for line in arpa_ifp:
             line = line.strip()
             #Process based on n-gram order
-            if self.order>0 and not line=="" and not line.startswith("\\"):
+            if int(self.max_order) > 1 and (self.order>0) and (not line=="") and (not line.startswith("\\")):
                 parts = re.split(r"\s+",line)
                 if self.order==1:
                     if parts[1]=="</s>":
@@ -136,7 +136,14 @@ class Arpa2WFST( ):
                 pass
             elif line.startswith("\\"):
                 self.order = int(line.replace("\\","").replace("-grams:",""))
-                
+            elif int(self.max_order)==1 and self.order>0:
+                parts = re.split(r"\s+",line)
+                if len(parts)>1 and not parts[1]=="<s>":
+                    g,p = parts[1].split(self.io_sep)
+                    arpa_ofp.write( self.make_arc( "<s>", "<s>", g, p, parts[0] ) )
+
+        if int(self.max_order)==1:
+            arpa_ofp.write( self.make_arc( "<s>", "</s>", "</s>", "</s>", 0.0 ) )
         arpa_ifp.close()
         arpa_ofp.write("</s>\n")
         arpa_ofp.close()
