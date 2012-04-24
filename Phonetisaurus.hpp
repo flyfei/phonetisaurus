@@ -23,7 +23,7 @@
  */
 #include <fst/fstlib.h>
 #include "FstPathFinder.hpp"
-
+#include "MBRDecoder.hpp"
 using namespace fst;
 
 class Phonetisaurus {
@@ -38,6 +38,10 @@ public:
     string        sb;
     string        skip;
     string        tie;
+    int           order;
+    float         alpha;
+    float         theta;
+    bool          mbrdecode;
     set<string>   skipSeqs;
     map<vector<string>, int>   clusters;
     //FST stuff
@@ -48,7 +52,7 @@ public:
         
     Phonetisaurus( );
         
-    Phonetisaurus( const char* g2pmodel_file );
+  Phonetisaurus( const char* g2pmodel_file, bool _mbrdecode, float alpha, float theta, int order );
 
     StdVectorFst entryToFSA( vector<string> entry );
 

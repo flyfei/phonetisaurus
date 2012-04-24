@@ -91,9 +91,12 @@ vector<string> tokenize_string( string input_string, SymbolTable* isyms, string 
     return entry;
 }
 
-void phoneticizeWord( const char* g2pmodel_file, string testword, int nbest, string sep, int beam=500, int output_words=0 ){
+void phoneticizeWord( 
+		     const char* g2pmodel_file, string testword, 
+		     int nbest, string sep, bool mbrdecoder, float alpha, float theta, int order,
+		     int beam=500, int output_words=0 ){
     
-    Phonetisaurus phonetisaurus( g2pmodel_file );
+  Phonetisaurus phonetisaurus( g2pmodel_file, mbrdecoder, alpha, theta, order );
 
     vector<string> entry;
     if( sep.compare("")==0 )
@@ -123,7 +126,7 @@ void phoneticizeSentence( const char* g2pmodel_file, string sentence, int nbest,
      to running the phoneticizer.  This would further facilitate a later focus on 
      sentence level accent/pronunciation modeling.  Future work!
     */
-    Phonetisaurus phonetisaurus( g2pmodel_file );
+  Phonetisaurus phonetisaurus( g2pmodel_file, false, 0.3, 1.0, 2 );
     
     char* tmpstring = (char *)sentence.c_str();
     char *p = strtok(tmpstring, " ");
@@ -141,9 +144,11 @@ void phoneticizeSentence( const char* g2pmodel_file, string sentence, int nbest,
     return;
 }
     
-void phoneticizeTestSet( const char* g2pmodel_file, const char* testset_file, int nbest, string sep, int beam=500, int output_words=0 ){
+void phoneticizeTestSet( const char* g2pmodel_file, const char* testset_file, int nbest, string sep, 
+			 bool mbrdecoder, float alpha, float theta, int order,
+			 int beam=500, int output_words=0 ){
     
-    Phonetisaurus phonetisaurus( g2pmodel_file );
+  Phonetisaurus phonetisaurus( g2pmodel_file, mbrdecoder, alpha, theta, order );
     
     ifstream test_fp;
     test_fp.open( testset_file );
@@ -208,17 +213,28 @@ int main( int argc, char **argv ) {
     int beam_flag          = 0;
     int sep_flag           = 0;
     int output_words_flag  = 0;
-    
-	/* File names */
-	const char* g2pmodel_file;
-	const char* testset_file;
-	string testword;
+    int mbrdecoder_flag    = 0;
+    int alpha_flag         = 0;
+    int theta_flag         = 0;
+    int order_flag         = 0;
+
+    /* File names */
+    const char* g2pmodel_file;
+    const char* testset_file;
+    string testword;
     string sentence;
     string sep = "";
     int nbest  = 1;
     int beam   = 500;
-	/* Help Info */
-	char help_info[1024];
+
+    /*MBR decoder stuff*/
+    bool  mbrdecoder = false;
+    float alpha = 1.0;
+    float theta = 1.0;
+    int   order = 2;
+
+    /* Help Info */
+    char help_info[1024];
     
 	sprintf(help_info, "Syntax: %s -m g2p-model.fst [-t testfile | -w testword | -s 'a few words'] [-n N]\n\
 Required:\n\
@@ -231,6 +247,10 @@ Optional:\n\
    -o --output_words: Output the orthography along with the pronunciation hypotheses and scores.\n\
    -e --sep: Optional separator character for tokenization.  Defaults to ''.\n\
    -b --beam: Optional beam for N-best search.  Defaults to '500'. Larger beams will yield more N-best, but will not affect accuracy.\n\
+   -r --mbrdecoder: Use the MBR decoder.  Defaults to 'false'.\n\
+   -x --theta: Theta parameter for the MBR decoder.  Defaults to '1.0'.\n\
+   -a --alpha: Alpha LM scale factor for the MBR decoder.  Defaults to '1.0'.\n\
+   -d --order: Ngram LM order for the MBR decoder.  Defaults to '2'.\n\
    -h --help: Print this help message.\n\n", argv[0]);
     
     /* Begin argument parsing */
@@ -244,14 +264,18 @@ Optional:\n\
             {"sent",       required_argument, 0, 's'},
             {"nbest",      required_argument, 0, 'n'},
 	    {"output_words", no_argument, 0, 'o'},
+	    {"mbrdecoder", no_argument, 0, 'r'},
             {"beam",       required_argument, 0, 'b'},
             {"sep",        required_argument, 0, 'e'},
+	    {"alpha",      required_argument, 0, 'a'},
+	    {"theta",      required_argument, 0, 'x'},
+	    {"order",      required_argument, 0, 'd'},
             {"help",       no_argument, 0, 'h'},
             {0,0,0,0}
         };
     
         int option_index = 0;
-        c = getopt_long( argc, argv, "hom:t:w:b:n:s:e:", long_options, &option_index);
+        c = getopt_long( argc, argv, "hora:x:d:m:t:w:b:n:s:e:", long_options, &option_index);
         
         if ( c == -1 )
             break;
@@ -278,6 +302,22 @@ Optional:\n\
 	    case 'o':
 	        output_words_flag = 1;
 		break;
+	    case 'a':
+	        alpha_flag = 1;
+	        alpha = atof(optarg);
+	        break;
+	    case 'x':
+	        theta_flag = 1;
+	        theta = atof(optarg);
+	        break;
+	    case 'd':
+	        order_flag = 1;
+	        order = atoi(optarg);
+	        break;
+	    case 'r':
+	        mbrdecoder_flag = 1;
+		mbrdecoder = true;
+	        break;
             case 'b':
                 beam_flag = 1;
 		beam = atoi(optarg);
@@ -314,12 +354,12 @@ Optional:\n\
     }
     
     if( testword_flag==1 ){
-      phoneticizeWord( g2pmodel_file, testword, nbest, sep, beam, output_words_flag );
+      phoneticizeWord( g2pmodel_file, testword, nbest, sep, mbrdecoder, alpha, theta, order, beam, output_words_flag );
     }else if( testset_file_flag==1 ){
-      phoneticizeTestSet( g2pmodel_file, testset_file, nbest, sep, beam, output_words_flag );
+      phoneticizeTestSet( g2pmodel_file, testset_file, nbest, sep, mbrdecoder, alpha, theta, order, beam, output_words_flag );
     }else if( sentence_flag==1 ){
       phoneticizeSentence( g2pmodel_file, sentence, nbest, beam );
     }
-
-    return 0;
+    exit(0);
+    return 1;
 }

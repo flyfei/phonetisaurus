@@ -4,12 +4,13 @@ using namespace fst;
 
 
 int main( int argc, char* argv[] ){
-  SymbolTable*       syms = SymbolTable::ReadText(argv[1]);
-  NgramExtractor     extractor( atoi(argv[2]), syms );
-  VectorFst<StdArc>* std_lattice = VectorFst<StdArc>::Read(argv[3]);
-  VectorFst<LogArc>* log_lattice = new VectorFst<LogArc>();
-  Map(*std_lattice, log_lattice, StdToLogMapper());
-  extractor.build_decoder( log_lattice );
+  //VectorFst<StdArc>* std_lattice = VectorFst<StdArc>::Read(argv[1]);
+  //VectorFst<LogArc>* log_lattice = new VectorFst<LogArc>();
+  //Map(*std_lattice, log_lattice, StdToLogMapper());
+  VectorFst<LogArc>* log_lattice = VectorFst<LogArc>::Read(argv[1]);
+
+  MBRDecoder         mbrdecoder( atoi(argv[2]), log_lattice );
+  mbrdecoder.build_decoder( );
 
   return 1;
 }

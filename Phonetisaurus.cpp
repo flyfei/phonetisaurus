@@ -36,8 +36,12 @@ Phonetisaurus::Phonetisaurus( ) {
     //Default constructor
 }
 
-Phonetisaurus::Phonetisaurus( const char* g2pmodel_file ) {
+Phonetisaurus::Phonetisaurus( const char* g2pmodel_file, bool _mbrdecode, float _alpha, float _theta, int _order ) {
     //Base constructor.  Load the clusters file, the models and setup shop.
+    mbrdecode = _mbrdecode;
+    alpha = _alpha;
+    theta = _theta;
+    order = _order;
     eps  = "<eps>";
     sb   = "<s>";
     se   = "</s>";
@@ -191,14 +195,37 @@ vector<PathData> Phonetisaurus::phoneticize( vector<string> entry, int nbest, in
     Compose( efst, *g2pmodel, &result );
 
     Project(&result, PROJECT_OUTPUT);
-    
+    if( mbrdecode==true ){
+      VectorFst<LogArc> logfst;
+      Map( result, &logfst, StdToLogMapper() );
+      RmEpsilon(&logfst);
+      VectorFst<LogArc> detlogfst;
+      //cout << "pre-determinize" << endl;
+      Determinize(logfst, &detlogfst);
+      //cout << "pre-minimize" << endl;
+      Minimize(&detlogfst);
+      detlogfst.SetInputSymbols(g2pmodel->OutputSymbols());
+      detlogfst.SetOutputSymbols(g2pmodel->OutputSymbols());
+      //cout << "build MBRDecoder" << endl;
+      MBRDecoder mbrdecoder( order, &detlogfst, alpha, theta );
+      //cout << "decode" << endl;
+      mbrdecoder.build_decoder( );
+      Map( *mbrdecoder.omegas[order-1], &result, LogToStdMapper() );
+    }
+    //cout << "Finished MBR stuff!" << endl;
     if( nbest > 1 ){
         //This is a cheesy hack. 
         ShortestPath( result, &shortest, beam );
     }else{
         ShortestPath( result, &shortest, 1 );
     }
-    
+    /*
+    VectorFst<LogArc>* logResult = new VectorFst<LogArc>();
+    Map(result, logResult, StdToLogMapper());
+    logResult->SetInputSymbols(g2pmodel->OutputSymbols());
+    logResult->SetOutputSymbols(g2pmodel->OutputSymbols());
+    logResult->Write("ph-lattice.fst");
+    */
     RmEpsilon( &shortest );
     FstPathFinder pathfinder( skipSeqs );
     pathfinder.findAllStrings( shortest );

@@ -42,7 +42,7 @@ def process_testset( testfile, wordlist_out, reference_out, verbose=False ):
     reference_ofp.close()
     return
 
-def evaluate_testset( modelfile, wordlistfile, referencefile, hypothesisfile, verbose=False, ignore="", ignore_both=False, regex_ignore="" ):
+def evaluate_testset( modelfile, wordlistfile, referencefile, hypothesisfile, verbose=False, ignore="", ignore_both=False, regex_ignore="", mbrdecode="", alpha=1.0, theta=1.0, order=2 ):
     """
       Evaluate the Word Error Rate (WER) for the test set.
       Each word should only be evaluated once.  The word is counted as 
@@ -53,7 +53,7 @@ def evaluate_testset( modelfile, wordlistfile, referencefile, hypothesisfile, ve
     """
 
     if verbose: print "Executing evaluation with command:"
-    command = "../phonetisaurus-g2p -m %s -o -t %s > %s" % (modelfile, wordlistfile, hypothesisfile)
+    command = "../phonetisaurus-g2p -m %s -o -t %s %s -a %0.4f -x %0.4f -d %d > %s" % (modelfile, wordlistfile,  mbrdecode, alpha, theta, order, hypothesisfile)
     if verbose: print command
     os.system(command)
     references = {}
@@ -79,6 +79,10 @@ if __name__=="__main__":
     parser.add_argument('--testfile',  "-t", help="The test file in dictionary format. 1 word, 1 pronunciation per line, separated by '\\t'.", required=True )
     parser.add_argument('--prefix',    "-p", help="Prefix used to generate the wordlist, hypothesis and reference files.  Defaults to 'test'.", required=False )
     parser.add_argument('--modelfile', "-m", help="Path to the phoneticizer model.", required=True )
+    parser.add_argument('--mbrdecode', "-e", help="Use the mbr decoderl.", default="" )
+    parser.add_argument('--alpha', "-a", help="Alpha for the mbr decoder.", default=1.0, type=float )
+    parser.add_argument('--order', "-o", help="N-gram order for the mbr decoder.", default=2, type=int )
+    parser.add_argument('--theta', "-x", help="Uniform theta for the MBR decoder (should be order specific though...).", default=1.0, type=float )
     parser.add_argument('--ignore', "-i", help="Ignore chars in list.  Chars should be ' ' separated.  Applied only to Hypotheses by default.", required=False, default="" )
     parser.add_argument('--ignore_both', "-b", help="Ignore chars in --ignore both for Hypotheses AND References.", default=False, action="store_true" )
     parser.add_argument('--regex_ignore', "-r", help="Ignore chars in the regex.  Applied only to Hypotheses by default.", required=False, default="" )
@@ -94,5 +98,6 @@ if __name__=="__main__":
     evaluate_testset( 
         args.modelfile, wordlist, ref_file, 
         hyp_file, verbose=args.verbose, ignore=args.ignore, 
-        ignore_both=args.ignore_both, regex_ignore=args.regex_ignore 
+        ignore_both=args.ignore_both, regex_ignore=args.regex_ignore,
+        mbrdecode=args.mbrdecode, alpha=args.alpha, theta=args.theta, order=args.order 
         ) 

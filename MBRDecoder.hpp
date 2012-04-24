@@ -1,8 +1,9 @@
-#ifndef NGRAMEXTRACTOR_H
-#define NGRAMEXTRACTOR_H
+#ifndef MBRDECODER_H
+#define MBRDECODER_H
 #include <fst/fstlib.h>
 using namespace fst;
 
+typedef SigmaMatcher<SortedMatcher<Fst<StdArc> > > SSM;
 typedef SigmaMatcher<SortedMatcher<Fst<LogArc> > > SM;
 typedef RhoMatcher<SM> RM;
 
@@ -12,9 +13,9 @@ template <class T> inline string to_string (const T& t){
   return ss.str();
 }
 
-class NgramExtractor{
+class MBRDecoder{
   /*
-    The NgramExtractor class takes a Ngram WFSA and uses this 
+    The MBRDecoder class takes a Ngram WFSA and uses this 
     to build a series of WFST objects that form the basis of a
     Minimum Bayes-Risk decoder.
 
@@ -36,18 +37,19 @@ public:
   vector<float> thetas;
   SymbolTable* syms;
   VectorFst<LogArc>* lattice;
+  VectorFst<StdArc>* std_lattice;
   vector<set<vector<int> > >  ngrams;
   vector<VectorFst<LogArc>* > mappers;
   vector<VectorFst<LogArc>* > pathcounters;
   vector<VectorFst<LogArc>* > latticeNs;
   vector<VectorFst<LogArc>* > omegas;
 
-  NgramExtractor( );
+  MBRDecoder( );
 
-  NgramExtractor( int _order,  SymbolTable* _syms );
+  MBRDecoder( int _order,  VectorFst<LogArc>* _lattice, float _alpha, float _theta );
 
   //Build all required MBR decoder components
-  void build_decoder( VectorFst<LogArc>* _lattice );
+  void build_decoder( );
 
   void build_decoders( );
 
@@ -80,10 +82,12 @@ public:
 
   void _alpha_normalize( VectorFst<LogArc>* _lattice );
 
+  VectorFst<StdArc> count_ngrams( VectorFst<StdArc>* std_lattice, int order );
+
 private:
   string _vec_to_string( const vector<int>* vec );
 
   const LogArc& _get_arc( VectorFst<LogArc>* mapper, int i, vector<int> ngram );
 }; 
 
-#endif //NGRAMEXTRACTOR_H
+#endif //MBRDECODER_H

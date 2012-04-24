@@ -1,23 +1,35 @@
 #include "MBRDecoder.hpp"
 
-NgramExtractor::NgramExtractor( ){
+MBRDecoder::MBRDecoder( ){
   //Default constructor
 }
 
-NgramExtractor::NgramExtractor( int _order, SymbolTable* _syms ){
+MBRDecoder::MBRDecoder( int _order, VectorFst<LogArc>* _lattice, float _alpha, float _theta ){
   /*
     Preferred class constructor
   */
   order   = _order;
-  syms    = _syms;
+  syms    = new SymbolTable("syms");
   sigmaID = 1;
   rhoID   = 2;
-  alpha   = 1.0;
+  alpha   = _alpha;
+  
+  syms->AddSymbol("<eps>");
+  syms->AddSymbol("<sigma>");
+  syms->AddSymbol("<rho>");
+  syms->AddSymbol("<phi>");
+  for( int i=0; i<_lattice->InputSymbols()->NumSymbols(); i++ )
+    syms->AddSymbol(_lattice->InputSymbols()->Find(i));
+  Relabel(_lattice, syms, syms);
+  lattice = new VectorFst<LogArc>();
+  std_lattice = new VectorFst<StdArc>();
+
+  _alpha_normalize(_lattice);
+
 
   for( int i=0; i<order+1; i++ )
-    thetas.push_back(1.0); 
+    thetas.push_back(_theta); 
   ngrams.resize(order);
-  lattice = new VectorFst<LogArc>();
   
   for( int i=0; i<order; i++ ){
     mappers.push_back(new VectorFst<LogArc>() );
@@ -27,7 +39,7 @@ NgramExtractor::NgramExtractor( int _order, SymbolTable* _syms ){
   }
 }
 
-void NgramExtractor::build_decoder( VectorFst<LogArc>* _lattice ){
+void MBRDecoder::build_decoder( ){
   /*
     Helper function that will build all required MBR decoder components.
     This includes the following:
@@ -36,28 +48,35 @@ void NgramExtractor::build_decoder( VectorFst<LogArc>* _lattice ){
        * Ngram path-counting automata
        * Integrated MBR decoder cores
   */
-
-  _alpha_normalize(_lattice);
+  //cout << "Map lattice and building counters.." << endl;
+  Map(*lattice, std_lattice, LogToStdMapper());  
+  *std_lattice = count_ngrams( std_lattice, order );
+  //cout << "Finished counts WFST..." << endl;
 
   //Step 1. Extract all unique Ngrams up to 'order'
-  extract_ngrams( lattice->Start(), vector<int>() );
+  //cout << "Extract ngrams..." << endl;
+  extract_ngrams( std_lattice->Start(), vector<int>() );
 
   //Step 2. Construct N-gram CD FSTs from the result of 1.
+  //cout << "Build ngram cd fsts..." << endl;
   build_ngram_cd_fsts( );
 
   //Step 3. Construct Psi pathcounter FSTs from the result of 1.
+  //cout << "Build right pathcounters.." << endl;
   build_right_pathcounters( );
 
   //Step 4. Construct the decoders from the results of Steps 2. and 3.
+  //cout << "build decoders..." << endl;
   build_decoders( );
 
   //Step 5. Finally find the shortest path through the decoder cascade
+  //cout << "finally decode" << endl;
   decode( );
 
   return;
 }
 
-void NgramExtractor::decode( ){
+void MBRDecoder::decode( ){
   //First map the lattice weights to \Theta_{0}
   for( StateIterator<VectorFst<LogArc> > siter(*lattice); !siter.Done(); siter.Next() ){
     size_t i = siter.Value();
@@ -69,14 +88,15 @@ void NgramExtractor::decode( ){
   }
 
   Compose(*lattice, *mappers[0], omegas[0]);
+
   for( int i=1; i<order; i++ )
     Compose(*omegas[i-1], *mappers[i], omegas[i]);
-  omegas[order-1]->Write("omega.fst");
-
+  //omegas[order-1]->Write("omega.fst");
+  //cout << "Finished decoding composition" << endl;
   return;
 }
 
-void NgramExtractor::_alpha_normalize( VectorFst<LogArc>* _lattice ){
+void MBRDecoder::_alpha_normalize( VectorFst<LogArc>* _lattice ){
   for( StateIterator<VectorFst<LogArc> > siter(*_lattice); !siter.Done(); siter.Next() ){
     size_t i = siter.Value();
     for( MutableArcIterator<VectorFst<LogArc> > aiter(_lattice, i); !aiter.Done(); aiter.Next() ){
@@ -87,16 +107,18 @@ void NgramExtractor::_alpha_normalize( VectorFst<LogArc>* _lattice ){
   }
 
   Push<LogArc, REWEIGHT_TO_FINAL>(*_lattice, lattice, kPushWeights);
-  for( StateIterator<VectorFst<LogArc> > siter(*_lattice); !siter.Done(); siter.Next() ){
+
+  for( StateIterator<VectorFst<LogArc> > siter(*lattice); !siter.Done(); siter.Next() ){
     size_t i = siter.Value();
-    if( _lattice->Final(i)!=LogArc::Weight::Zero() ){
-      _lattice->SetFinal(i,LogArc::Weight::One());
+    if( lattice->Final(i)!=LogArc::Weight::Zero() ){
+      lattice->SetFinal(i,LogArc::Weight::One());
     }
   }
+
   return;
 }
 
-void NgramExtractor::build_decoders( ){
+void MBRDecoder::build_decoders( ){
   /*
     Construct the order-N lattices from the order-N
     context-dependency WFSTs and the raw input lattice.
@@ -119,7 +141,7 @@ void NgramExtractor::build_decoders( ){
     string fname = "lattice-" + to_string(i) + ".fst";
     latticeNs[i]->SetInputSymbols(syms);
     latticeNs[i]->SetOutputSymbols(syms);
-    latticeNs[i]->Write(fname);
+    //latticeNs[i]->Write(fname);
 
     //
     //---Compute the path-posterior N-gram probabilities---\\
@@ -128,12 +150,12 @@ void NgramExtractor::build_decoders( ){
     pathcounters[i]->SetOutputSymbols(syms);
     countPaths( pathcounters[i], latticeNs[i], i );
   }
-  syms->WriteText("finalsyms.syms");
+  //syms->WriteText("finalsyms.syms");
   return;
 }
 
 
-void NgramExtractor::countPaths( VectorFst<LogArc>* Psi, VectorFst<LogArc>* latticeN, int i ){
+void MBRDecoder::countPaths( VectorFst<LogArc>* Psi, VectorFst<LogArc>* latticeN, int i ){
   /*
     Begin cascaded matcher stuff
     NOTE: Order and precedence matter!!!
@@ -164,12 +186,14 @@ void NgramExtractor::countPaths( VectorFst<LogArc>* Psi, VectorFst<LogArc>* latt
 
   //Determinize and minimize the result
   VectorFst<LogArc> detResult;
+  //cout << "Determinizing" << endl;
   Determinize( result, &detResult );
+  //cout << "Minimizing" << endl;
   Minimize( &detResult );
   string fname = "post-"+to_string(i)+".fst";
   detResult.SetInputSymbols(syms);
   detResult.SetOutputSymbols(syms);
-  detResult.Write(fname);
+  //detResult.Write(fname);
   //Now set the arc weights for the decoding transducer, which is just the 
   //order-N mapping transducer where the Psi weights have been applied 
   //to all the arcs.
@@ -189,14 +213,14 @@ void NgramExtractor::countPaths( VectorFst<LogArc>* Psi, VectorFst<LogArc>* latt
   }
   Project(mappers[i], PROJECT_INPUT);
 
-  fname = "wmapper-"+to_string(i)+".fst";
-  mappers[i]->Write(fname);
+  //fname = "wmapper-"+to_string(i)+".fst";
+  //mappers[i]->Write(fname);
 
   return;
 }
 
 
-void NgramExtractor::build_right_pathcounters( ){
+void MBRDecoder::build_right_pathcounters( ){
   for( int i=0; i<ngrams.size(); i++ ){
     set<vector<int> >::iterator ait;
     pathcounters[i]->AddState();
@@ -214,12 +238,12 @@ void NgramExtractor::build_right_pathcounters( ){
     string fstname = "rpathcounter-" + to_string(i) + ".fst";
     pathcounters[i]->SetInputSymbols(syms);
     pathcounters[i]->SetOutputSymbols(syms);
-    pathcounters[i]->Write(fstname);
+    //pathcounters[i]->Write(fstname);
   }
   return;
 }
 
-void NgramExtractor::build_left_pathcounters( ){
+void MBRDecoder::build_left_pathcounters( ){
   for( int i=0; i<ngrams.size(); i++ ){
     set<vector<int> >::iterator ait;
     pathcounters[i]->AddState();
@@ -237,12 +261,12 @@ void NgramExtractor::build_left_pathcounters( ){
     string fstname = "lpathcounter-" + to_string(i) + ".fst";
     pathcounters[i]->SetInputSymbols(syms);
     pathcounters[i]->SetOutputSymbols(syms);
-    pathcounters[i]->Write(fstname);
+    //pathcounters[i]->Write(fstname);
   }
   return;
 }
 
-void NgramExtractor::build_ngram_cd_fsts( ){
+void MBRDecoder::build_ngram_cd_fsts( ){
   /*
     Parent function to build the individual order-N Ngram
     context-dependency transducers.
@@ -264,12 +288,12 @@ void NgramExtractor::build_ngram_cd_fsts( ){
     string fstname = "mapper-cd-"+to_string(i)+".fst";
     mappers[i]->SetInputSymbols(syms);
     mappers[i]->SetOutputSymbols(syms);
-    mappers[i]->Write(fstname);
+    //mappers[i]->Write(fstname);
   }
   return;
 }
 
-void NgramExtractor::connect_ngram_cd_fst( VectorFst<LogArc>* mapper, int i ){
+void MBRDecoder::connect_ngram_cd_fst( VectorFst<LogArc>* mapper, int i ){
   for( set<vector<int> >::iterator ait=ngrams[i].begin(); ait!=ngrams[i].end(); ait++ ){
     vector<int> ngram = (*ait);
     const LogArc& iarc = _get_arc( mapper, mapper->Start(), ngram  );
@@ -288,7 +312,7 @@ void NgramExtractor::connect_ngram_cd_fst( VectorFst<LogArc>* mapper, int i ){
   return;
 }
 
-const LogArc& NgramExtractor::_get_arc( VectorFst<LogArc>* mapper, int i, vector<int> ngram ){
+const LogArc& MBRDecoder::_get_arc( VectorFst<LogArc>* mapper, int i, vector<int> ngram ){
   //We are ASS-U-ME-ing there is a match.  
   //This will break if I fucked up somewhere else (highly likely).
   if( ngram.size()==1 ){
@@ -312,7 +336,7 @@ const LogArc& NgramExtractor::_get_arc( VectorFst<LogArc>* mapper, int i, vector
 
 }
 
-string NgramExtractor::_vec_to_string( const vector<int>* vec ){
+string MBRDecoder::_vec_to_string( const vector<int>* vec ){
   /*
     Convenience function for converting a pointer to a vector
     of ints to a string based on the input symbol table.
@@ -324,7 +348,7 @@ string NgramExtractor::_vec_to_string( const vector<int>* vec ){
   return label;
 }
 
-void NgramExtractor::add_ngram( VectorFst<LogArc>* mapper, int state, vector<int> ngram, const vector<int>* lab ){
+void MBRDecoder::add_ngram( VectorFst<LogArc>* mapper, int state, vector<int> ngram, const vector<int>* lab ){
   /*
     Recursively add Ngrams to the order-N ngram tree.  This forms the basis for
     the order-N lattice-Ngram context-dependency transducer.
@@ -373,6 +397,15 @@ void NgramExtractor::add_ngram( VectorFst<LogArc>* mapper, int state, vector<int
     // continue recursively calling 'add_ngram'.  This is not a final state.
     }else if( ngram.size()>1 ){
       mapper->AddArc( state, LogArc( ngram[0], 0, LogArc::Weight::One(), sid ) );
+      //All states except the start state are final states.  
+      //Strictly speaking, this violates the idea of real context-dependency
+      // because for N-gram order > 1 this means that paths of length < order
+      // will still be mapped - albeit to epsilon.  This is necessary for the 
+      // decoding procedure however, as we need to project the input back for 
+      // each iteration.  This means that if we do NOT add these final states
+      // any paths of length < order will be discarded prior to finishing.
+      //Hopefully that makes sense.
+      mapper->SetFinal( sid, LogArc::Weight::One() );
       ngram.erase(ngram.begin());
       add_ngram( mapper, sid, ngram, lab );
     }
@@ -382,7 +415,7 @@ void NgramExtractor::add_ngram( VectorFst<LogArc>* mapper, int state, vector<int
 }
 
 
-void NgramExtractor::extract_ngrams( int state, vector<int> ngram ){
+void MBRDecoder::extract_ngrams( int state, vector<int> ngram ){
   /*
     Recursively traverse the input lattice and extract all unique Ngrams of length >= order.
     Effectively the 'ngram' vector functions as a sort of stack with a fixed size <= order.  
@@ -472,8 +505,8 @@ void NgramExtractor::extract_ngrams( int state, vector<int> ngram ){
   // faster and more memory and space efficient than using standard WFST operations.
   //Nevertheless it would be worth double-checking this at a later date, both analytically
   // and empirically with several of the G2P datasets.  More fodder for the journal...
-  for( ArcIterator<VectorFst<LogArc> > aiter(*lattice,state); !aiter.Done(); aiter.Next() ) {
-    const LogArc& arc = aiter.Value();
+  for( ArcIterator<VectorFst<StdArc> > aiter(*std_lattice,state); !aiter.Done(); aiter.Next() ) {
+    const StdArc& arc = aiter.Value();
     vector<int> n_ngram = ngram;
     n_ngram.push_back(arc.ilabel);
     extract_ngrams( arc.nextstate, n_ngram );
@@ -482,12 +515,12 @@ void NgramExtractor::extract_ngrams( int state, vector<int> ngram ){
   return;
 }
 
-void NgramExtractor::build_mappers( ){
+void MBRDecoder::build_mappers( ){
   
   return;
 }
 
-void NgramExtractor::build_pathcounters( bool _right ){
+void MBRDecoder::build_pathcounters( bool _right ){
   if( _right==true )
     build_right_pathcounters( );
   else
@@ -495,3 +528,54 @@ void NgramExtractor::build_pathcounters( bool _right ){
   return;
 }
 
+VectorFst<StdArc> MBRDecoder::count_ngrams( VectorFst<StdArc>* std_lattice, int order ){
+  /*
+    Build an N-gram counting transducer using sigma transitions and 
+    extract N-gram occurences from an arbitrary input std_lattice.
+  */
+  SymbolTable* syms = new SymbolTable("syms");
+  syms->AddSymbol("<eps>");
+  syms->AddSymbol("<sigma>");
+  for( int i=0; i<std_lattice->InputSymbols()->NumSymbols(); i++ )
+    syms->AddSymbol(std_lattice->InputSymbols()->Find(i));
+  Relabel(std_lattice, syms, syms);
+  ArcSort(std_lattice,OLabelCompare<StdArc>());
+  ArcMap(std_lattice, RmWeightMapper<StdArc>());
+  for( StateIterator<VectorFst<StdArc> > siter(*std_lattice); !siter.Done(); siter.Next() ){
+    size_t i = siter.Value();
+    if( std_lattice->Final(i)!=StdArc::Weight::Zero() )
+      std_lattice->SetFinal(i,StdArc::Weight::One());
+  } 
+  VectorFst<StdArc>* counter = new VectorFst<StdArc>();
+  
+  size_t start = counter->AddState();
+  counter->SetStart(start);
+  counter->AddArc( start, StdArc( 1, 0, StdArc::Weight::One(), start ) );
+  for( int i=1; i<=order; i++ ){
+    size_t state = counter->AddState();
+    for( int j=2; j<syms->NumSymbols(); j++ )
+      counter->AddArc( i-1, StdArc( j, j, StdArc::Weight::One(), i ) );
+  }
+  size_t final = counter->NumStates()-1;
+  counter->AddArc( final, StdArc( 1, 0, StdArc::Weight::One(), final ) );
+  counter->SetFinal( final, StdArc::Weight::One() );
+  counter->SetInputSymbols(syms);
+  counter->SetOutputSymbols(syms);
+
+  SSM* sm = new SSM( *counter, MATCH_INPUT, 1 );
+  ComposeFstOptions<StdArc, SSM> opts;
+  opts.gc_limit = 0;
+  opts.matcher1 = new SSM(*std_lattice, MATCH_NONE,  kNoLabel);
+  opts.matcher2 = sm;
+  ComposeFst<StdArc> fstc(*std_lattice, *counter, opts);
+  VectorFst<StdArc> tmp(fstc);
+  Project(&tmp, PROJECT_OUTPUT);
+  RmEpsilon(&tmp);
+  DeterminizeFst<StdArc> det(tmp);
+  VectorFst<StdArc> counts(det);
+  Minimize(&counts);
+  counts.SetInputSymbols(syms);
+  counts.SetOutputSymbols(syms);
+
+  return counts;
+}

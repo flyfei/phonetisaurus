@@ -318,6 +318,7 @@ class ErrorRater( ):
             refs.append( [ re.split(usep, field) for field in fields[1:] ] )
             
         #Make sure we have the same number of entries
+        print "Words:", len(words), " Hyps:", len(hyps), "Refs:", len(refs)
         assert len(words)==len(hyps) and len(hyps)==len(refs)
         
         for i, word in enumerate(words):
