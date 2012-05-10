@@ -40,7 +40,9 @@ public:
     string        tie;
     int           order;
     float         alpha;
-    float         theta;
+    float         precision;
+    float         ratio;
+    vector<float> thetas;
     bool          mbrdecode;
     set<string>   skipSeqs;
     map<vector<string>, int>   clusters;
@@ -52,7 +54,7 @@ public:
         
     Phonetisaurus( );
         
-  Phonetisaurus( const char* g2pmodel_file, bool _mbrdecode, float alpha, float theta, int order );
+    Phonetisaurus( const char* _g2pmodel_file, bool _mbrdecode, float _alpha, float _precision, float _ratio, int _order );
 
     StdVectorFst entryToFSA( vector<string> entry );
 
@@ -64,7 +66,7 @@ public:
     
 private:
     void loadClusters( );
-
+    int _compute_thetas( int wlen );
 };
 
 #endif // PHONETISAURUS_H //

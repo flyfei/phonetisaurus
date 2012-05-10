@@ -1,11 +1,13 @@
 #ifndef MBRDECODER_H
 #define MBRDECODER_H
 #include <fst/fstlib.h>
+#include "google/dense_hash_map"
 using namespace fst;
 
 typedef SigmaMatcher<SortedMatcher<Fst<StdArc> > > SSM;
 typedef SigmaMatcher<SortedMatcher<Fst<LogArc> > > SM;
 typedef RhoMatcher<SM> RM;
+typedef google::dense_hash_map<int, LogArc::Weight> UF;
 
 template <class T> inline string to_string (const T& t){
   stringstream ss;
@@ -46,7 +48,7 @@ public:
 
   MBRDecoder( );
 
-  MBRDecoder( int _order,  VectorFst<LogArc>* _lattice, float _alpha, float _theta );
+  MBRDecoder( int _order,  VectorFst<LogArc>* _lattice, float _alpha, vector<float> _thetas );
 
   //Build all required MBR decoder components
   void build_decoder( );
@@ -65,7 +67,7 @@ public:
   void build_left_pathcounters( );
 
   //Add an Ngram to a tree transducer
-  void add_ngram( VectorFst<LogArc>* mapper, int state, vector<int> ngram, const vector<int>* lab );
+  void add_ngram( VectorFst<LogArc>* mapper, int state, vector<int> ngram, const vector<int>* lab, bool olab );
 
   //Extract all unique Ngrams of order<=order
   void extract_ngrams( int state, vector<int> ngram );

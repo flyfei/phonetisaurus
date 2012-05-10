@@ -4,7 +4,7 @@ MBRDecoder::MBRDecoder( ){
   //Default constructor
 }
 
-MBRDecoder::MBRDecoder( int _order, VectorFst<LogArc>* _lattice, float _alpha, float _theta ){
+MBRDecoder::MBRDecoder( int _order, VectorFst<LogArc>* _lattice, float _alpha, vector<float> _thetas ){
   /*
     Preferred class constructor
   */
@@ -13,6 +13,7 @@ MBRDecoder::MBRDecoder( int _order, VectorFst<LogArc>* _lattice, float _alpha, f
   sigmaID = 1;
   rhoID   = 2;
   alpha   = _alpha;
+  thetas  = _thetas;
   
   syms->AddSymbol("<eps>");
   syms->AddSymbol("<sigma>");
@@ -26,9 +27,6 @@ MBRDecoder::MBRDecoder( int _order, VectorFst<LogArc>* _lattice, float _alpha, f
 
   _alpha_normalize(_lattice);
 
-
-  for( int i=0; i<order+1; i++ )
-    thetas.push_back(_theta); 
   ngrams.resize(order);
   
   for( int i=0; i<order; i++ ){
@@ -86,12 +84,30 @@ void MBRDecoder::decode( ){
       aiter.SetValue(arc);
     }
   }
-
+  //lattice->SetInputSymbols(syms);
+  //lattice->SetOutputSymbols(syms);
+  //lattice->Write("normed-lattice.fst");
   Compose(*lattice, *mappers[0], omegas[0]);
-
-  for( int i=1; i<order; i++ )
+  Project(omegas[0],PROJECT_INPUT);
+  //mappers[0]->Write("wmapper-0.fst");
+  for( int i=1; i<order; i++ ){
+    //cout << "Order..." << endl;
     Compose(*omegas[i-1], *mappers[i], omegas[i]);
-  //omegas[order-1]->Write("omega.fst");
+    Project(omegas[i],PROJECT_INPUT);
+    //mappers[i]->Write("wmapper-"+to_string(i)+".fst");
+    //omegas[i]->Write("omega-"+to_string(i)+".fst");
+  }
+  /*
+  for( StateIterator<VectorFst<LogArc> > siter(*omegas[order-1]); !siter.Done(); siter.Next() ){
+    size_t i = siter.Value();
+    for( MutableArcIterator<VectorFst<LogArc> > aiter(omegas[order-1],i); !aiter.Done(); aiter.Next() ){
+      LogArc arc = aiter.Value();
+      arc.weight = arc.weight.Value() * -1.;
+      aiter.SetValue(arc);
+    }
+  }
+  */
+  //omegas[order-1]->Write("omega-final.fst");
   //cout << "Finished decoding composition" << endl;
   return;
 }
@@ -114,7 +130,6 @@ void MBRDecoder::_alpha_normalize( VectorFst<LogArc>* _lattice ){
       lattice->SetFinal(i,LogArc::Weight::One());
     }
   }
-
   return;
 }
 
@@ -128,6 +143,7 @@ void MBRDecoder::build_decoders( ){
   lattice->SetOutputSymbols(syms);
 
   for( int i=0; i<order; i++ ){
+    //cout << "  Setup..." << i << endl;
     ArcSort(mappers[i], ILabelCompare<LogArc>());
     mappers[i]->SetInputSymbols(syms);
     mappers[i]->SetOutputSymbols(syms);
@@ -139,8 +155,8 @@ void MBRDecoder::build_decoders( ){
     Project(latticeNs[i], PROJECT_OUTPUT);
     RmEpsilon(latticeNs[i]);
     string fname = "lattice-" + to_string(i) + ".fst";
-    latticeNs[i]->SetInputSymbols(syms);
-    latticeNs[i]->SetOutputSymbols(syms);
+    //latticeNs[i]->SetInputSymbols(syms);
+    //latticeNs[i]->SetOutputSymbols(syms);
     //latticeNs[i]->Write(fname);
 
     //
@@ -148,6 +164,7 @@ void MBRDecoder::build_decoders( ){
     //
     pathcounters[i]->SetInputSymbols(syms);
     pathcounters[i]->SetOutputSymbols(syms);
+    //cout << "  counting paths..." << endl;
     countPaths( pathcounters[i], latticeNs[i], i );
   }
   //syms->WriteText("finalsyms.syms");
@@ -173,48 +190,107 @@ void MBRDecoder::countPaths( VectorFst<LogArc>* Psi, VectorFst<LogArc>* latticeN
   //End cascaded matcher stuff
 
   //Cast to normal VectorFst
+  //cout << "   Compose" << endl;
   VectorFst<LogArc> result(ComposeFst<LogArc>(*latticeN, *Psi, opts));
+  //cout << "Connecting..." << endl;
+  //Connect(&result);
 
+  //MODIFIED FORWARD IMPL
+  UF posteriors;
+  posteriors.set_empty_key(NULL);
+  //cout << "Top sorting..." << endl;
+  TopSort(&result);
+  vector<LogArc::Weight> alphas(result.NumStates()+1,LogArc::Weight::Zero());
+  alphas[0] = LogArc::Weight::One();
+  vector<int> agrams(result.NumStates()+1);
+  agrams[0] = 0;
+  //cout << "Computing mod forward..." << endl;
+  for( StateIterator<VectorFst<LogArc> > siter(result); !siter.Done(); siter.Next() ){
+    size_t q = siter.Value();
+    for( ArcIterator<VectorFst<LogArc> > aiter(result,q); !aiter.Done(); aiter.Next() ){
+      LogArc arc = aiter.Value();
+      alphas[arc.nextstate] = Plus(alphas[arc.nextstate],Times(alphas[q],arc.weight));
+      if( arc.olabel==0 ){
+	agrams[arc.nextstate] = agrams[q];
+      }else{
+	agrams[arc.nextstate] = arc.olabel;
+	posteriors.insert(UF::value_type(arc.olabel,LogArc::Weight::Zero()));
+      }
+    }
+  }
+  for( StateIterator<VectorFst<LogArc> > siter(result); !siter.Done(); siter.Next() ){
+    size_t q = siter.Value();
+    if( result.Final(q)!=LogArc::Weight::Zero() ){
+      LogArc::Weight w = Times(alphas[q],result.Final(q));
+      //cout << "q: " << q << "  u[q]: " << syms->Find(agrams[q])      \
+      //   << "  a[q]: " << alphas[q] << "  F[q]: " << result.Final(q) \
+      //   << "  a[q]xF[q]: " << w << endl;
+      posteriors[agrams[q]] = Plus(posteriors[agrams[q]],w);
+    }
+  }
+  //cout << "done with mod forward..." << endl;
+  //for( UF::iterator p=posteriors.begin(); p!=posteriors.end(); p++ )
+  //  cout << "u: " << syms->Find(p->first) << "  p(u|E): " << p->second << endl;
+    
+  //END MODIFIED FORWARD IMPL
+
+  /*
   //Delete unconnected states and arcs
-  Connect(&result);
-
+  //cout << "   Connect" << endl;
+  //cout << "   Project" << endl;
   //Project output labels
   Project(&result, PROJECT_OUTPUT);
 
   //Remove epsilon arcs
+  //cout << "   RmEpsilon" << endl;
   RmEpsilon(&result);
 
   //Determinize and minimize the result
   VectorFst<LogArc> detResult;
-  //cout << "Determinizing" << endl;
+  //cout << "   Determinizing" << endl;
   Determinize( result, &detResult );
-  //cout << "Minimizing" << endl;
+  //cout << "   Minimizing" << endl;
   Minimize( &detResult );
   string fname = "post-"+to_string(i)+".fst";
-  detResult.SetInputSymbols(syms);
-  detResult.SetOutputSymbols(syms);
+  //detResult.SetInputSymbols(syms);
+  //detResult.SetOutputSymbols(syms);
   //detResult.Write(fname);
   //Now set the arc weights for the decoding transducer, which is just the 
   //order-N mapping transducer where the Psi weights have been applied 
   //to all the arcs.
+  */
 
   for( StateIterator<VectorFst<LogArc> > siter(*mappers[i]); !siter.Done(); siter.Next() ){
     size_t id = siter.Value();
     for( MutableArcIterator<VectorFst<LogArc> > aiter(mappers[i],id); !aiter.Done(); aiter.Next() ){
       LogArc arc = aiter.Value();
+
+      if( arc.olabel != 0 ){
+	arc.weight = abs(posteriors[arc.olabel].Value())<0.000976562 ? thetas[i+1] : posteriors[arc.olabel].Value()*thetas[i+1];
+	//cout << "V-weight: " << syms->Find(arc.olabel) << ": " << arc.weight << endl;
+	aiter.SetValue(arc);
+      }
+
+      /*  
       for( ArcIterator<VectorFst<LogArc> > viter(detResult,0); !viter.Done(); viter.Next() ){
 	const LogArc& varc = viter.Value();
 	if( arc.olabel == varc.ilabel ){
-	  arc.weight = varc.weight.Value() * thetas[i+1];
-	  aiter.SetValue(arc);
+	  arc.weight = varc.weight.Value()==0 ? thetas[i+1] : varc.weight.Value() * thetas[i+1];
+	  cout << "T-weight: " << syms->Find(arc.olabel) << ": " << arc.weight << endl;
 	}
       }
+      */
     }
   }
-  Project(mappers[i], PROJECT_INPUT);
-
-  //fname = "wmapper-"+to_string(i)+".fst";
+  string fname = "wmapper-"+to_string(i)+".fst";
   //mappers[i]->Write(fname);
+  //Project(mappers[i], PROJECT_INPUT);
+
+  ArcSort( mappers[i], ILabelCompare<LogArc>() );
+
+  //lattice->SetInputSymbols(syms);
+  //lattice->SetOutputSymbols(syms);
+  //lattice->Write("normed-lattice.fst");
 
   return;
 }
@@ -273,14 +349,18 @@ void MBRDecoder::build_ngram_cd_fsts( ){
   */
   for( int i=0; i<ngrams.size(); i++ ){
     //Build the Ngram trees from the Ngram sets
+    //cout << "starting cd..." << endl;
     mappers[i]->AddState();
     mappers[i]->SetStart(0);
     set<vector<int> >::iterator it;
-    for( it=ngrams[i].begin(); it!=ngrams[i].end(); it++ ){
-      vector<int> ngram = (*it);
-      add_ngram( mappers[i], mappers[i]->Start(), ngram, &(*it) );
+    for( int j=0; j<=i; j++ ){
+      for( it=ngrams[j].begin(); it!=ngrams[j].end(); it++ ){
+	vector<int> ngram = (*it);
+	//cout << "adding ngram..." << endl;
+	add_ngram( mappers[i], mappers[i]->Start(), ngram, &(*it), (j==i ? true : false) );
+      }
     }
-    
+    //cout << "finished cd.." << endl;
     //Next, connect the final states based on the allowable 
     // transitions found in the original input word lattice.
     connect_ngram_cd_fst( mappers[i], i );
@@ -348,7 +428,7 @@ string MBRDecoder::_vec_to_string( const vector<int>* vec ){
   return label;
 }
 
-void MBRDecoder::add_ngram( VectorFst<LogArc>* mapper, int state, vector<int> ngram, const vector<int>* lab ){
+void MBRDecoder::add_ngram( VectorFst<LogArc>* mapper, int state, vector<int> ngram, const vector<int>* lab, bool olab ){
   /*
     Recursively add Ngrams to the order-N ngram tree.  This forms the basis for
     the order-N lattice-Ngram context-dependency transducer.
@@ -375,12 +455,16 @@ void MBRDecoder::add_ngram( VectorFst<LogArc>* mapper, int state, vector<int> ng
 
   //Try to find the next label in the current Ngram.  If we don't find it, we will 
   // add it to the Ngram tree.
+  //cout << "ADD NGRAM" << endl;
+  if( ngram.size()==0 ) return;
   for( ArcIterator<VectorFst<LogArc> > aiter(*mapper,state); !aiter.Done(); aiter.Next() ){
     const LogArc arc = aiter.Value();
+    //cout << "final size: " << ngram.size() << endl;
     if( arc.ilabel==ngram[0] ){
       found_ngram = true;
+      //cout << "true" << endl;
       ngram.erase(ngram.begin());
-      add_ngram( mapper, arc.nextstate, ngram, lab );
+      add_ngram( mapper, arc.nextstate, ngram, lab, olab );
     }
   }
 
@@ -390,12 +474,17 @@ void MBRDecoder::add_ngram( VectorFst<LogArc>* mapper, int state, vector<int> ng
     //If we only have one word/token left in the Ngram vector, then this is a final state.
     //At this point we will also index the arc so that we know which final nodes need 
     // extra arcs based on our available Ngram histories.
+    //cout << "false adding.." << endl;
     if( ngram.size()==1 ){
-      mapper->AddArc( state, LogArc( ngram[0], syms->AddSymbol(_vec_to_string(lab)), LogArc::Weight::One(), sid ) );
+      if( olab==true )
+	mapper->AddArc( state, LogArc( ngram[0], syms->AddSymbol(_vec_to_string(lab)), LogArc::Weight::One(), sid ) );
+      else
+	mapper->AddArc( state, LogArc( ngram[0], 0, LogArc::Weight::One(), sid ) );
       mapper->SetFinal( sid, LogArc::Weight::One() );
     //If we have more than one remaining token in the Ngram vector, add a new arc and 
     // continue recursively calling 'add_ngram'.  This is not a final state.
     }else if( ngram.size()>1 ){
+      //cout << "false keep going" << endl;
       mapper->AddArc( state, LogArc( ngram[0], 0, LogArc::Weight::One(), sid ) );
       //All states except the start state are final states.  
       //Strictly speaking, this violates the idea of real context-dependency
@@ -407,7 +496,7 @@ void MBRDecoder::add_ngram( VectorFst<LogArc>* mapper, int state, vector<int> ng
       //Hopefully that makes sense.
       mapper->SetFinal( sid, LogArc::Weight::One() );
       ngram.erase(ngram.begin());
-      add_ngram( mapper, sid, ngram, lab );
+      add_ngram( mapper, sid, ngram, lab, olab );
     }
   }
   
@@ -553,15 +642,20 @@ VectorFst<StdArc> MBRDecoder::count_ngrams( VectorFst<StdArc>* std_lattice, int 
   counter->AddArc( start, StdArc( 1, 0, StdArc::Weight::One(), start ) );
   for( int i=1; i<=order; i++ ){
     size_t state = counter->AddState();
-    for( int j=2; j<syms->NumSymbols(); j++ )
+    for( int j=4; j<syms->NumSymbols(); j++ ){
       counter->AddArc( i-1, StdArc( j, j, StdArc::Weight::One(), i ) );
+      counter->SetFinal( i, StdArc::Weight::One() );
+    }
   }
   size_t final = counter->NumStates()-1;
   counter->AddArc( final, StdArc( 1, 0, StdArc::Weight::One(), final ) );
-  counter->SetFinal( final, StdArc::Weight::One() );
+  for( int i=1; i<final; i++ )
+    counter->AddArc( i, StdArc( 1, 0, StdArc::Weight::One(), final ) );
+  //counter->SetFinal( final, StdArc::Weight::One() );
   counter->SetInputSymbols(syms);
   counter->SetOutputSymbols(syms);
-
+  //counter->Write("counter-s.fst");
+  ArcSort(counter,ILabelCompare<StdArc>());
   SSM* sm = new SSM( *counter, MATCH_INPUT, 1 );
   ComposeFstOptions<StdArc, SSM> opts;
   opts.gc_limit = 0;

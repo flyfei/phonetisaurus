@@ -36,11 +36,12 @@ Phonetisaurus::Phonetisaurus( ) {
     //Default constructor
 }
 
-Phonetisaurus::Phonetisaurus( const char* g2pmodel_file, bool _mbrdecode, float _alpha, float _theta, int _order ) {
+Phonetisaurus::Phonetisaurus( const char* _g2pmodel_file, bool _mbrdecode, float _alpha, float _precision, float _ratio, int _order ) {
     //Base constructor.  Load the clusters file, the models and setup shop.
     mbrdecode = _mbrdecode;
     alpha = _alpha;
-    theta = _theta;
+    precision = _precision;
+    ratio = _ratio;
     order = _order;
     eps  = "<eps>";
     sb   = "<s>";
@@ -53,7 +54,7 @@ Phonetisaurus::Phonetisaurus( const char* g2pmodel_file, bool _mbrdecode, float 
     skipSeqs.insert(skip);
     skipSeqs.insert("-");
     
-    g2pmodel = StdVectorFst::Read( g2pmodel_file );
+    g2pmodel = StdVectorFst::Read( _g2pmodel_file );
 
     isyms = (SymbolTable*)g2pmodel->InputSymbols(); 
     tie  = isyms->Find(1); //The separator symbol is reserved for index 1
@@ -179,6 +180,36 @@ StdVectorFst Phonetisaurus::entryToFSA( vector<string> entry ){
     return efst;
 }
 
+int Phonetisaurus::_compute_thetas( int wlen ){
+  /*
+    Theta values are computed on a per-word basis
+    We scale the maximum order by the length of the input word.
+    Higher MBR N-gram orders favor longer pronunciation hypotheses.
+    Thus a high N-gram order coupled with a short word will
+    favor longer pronunciations with more insertions.
+
+      p=.63, r=.48
+      p=.85, r=.72
+    .918
+    Compute the N-gram Theta factors for the
+    model.  These are a function of,
+      N:  The maximum N-gram order
+      T:  The total number of 1-gram tokens 
+      p:  The 1-gram precision
+      r:  A constant ratio
+       
+    1) T may be selected arbitrarily.
+    2) Default values are selected from Tromble 2008
+  */
+  thetas.clear();
+  float T = 10.0;
+  int N   = min( wlen+1, order );
+  //cout << "N: " << N << endl;
+  thetas.push_back( -1.0/T );
+  for( int n=1; n<=order; n++ )
+      thetas.push_back( 1.0/((N*T*precision) * (pow(ratio,(n-1)))) );
+  return N;
+}
 
 vector<PathData> Phonetisaurus::phoneticize( vector<string> entry, int nbest, int beam ){
     /*
@@ -189,15 +220,17 @@ vector<PathData> Phonetisaurus::phoneticize( vector<string> entry, int nbest, in
     StdVectorFst result;
     StdVectorFst epsMapped;
     StdVectorFst shortest;
-
     StdVectorFst efst = entryToFSA( entry );
-
+    StdVectorFst smbr;
+    int N = _compute_thetas( entry.size() );
     Compose( efst, *g2pmodel, &result );
 
     Project(&result, PROJECT_OUTPUT);
+    //result.Write("result-lattice.fst");
     if( mbrdecode==true ){
+      ShortestPath( result, &smbr, beam );
       VectorFst<LogArc> logfst;
-      Map( result, &logfst, StdToLogMapper() );
+      Map( smbr, &logfst, StdToLogMapper() );
       RmEpsilon(&logfst);
       VectorFst<LogArc> detlogfst;
       //cout << "pre-determinize" << endl;
@@ -207,10 +240,11 @@ vector<PathData> Phonetisaurus::phoneticize( vector<string> entry, int nbest, in
       detlogfst.SetInputSymbols(g2pmodel->OutputSymbols());
       detlogfst.SetOutputSymbols(g2pmodel->OutputSymbols());
       //cout << "build MBRDecoder" << endl;
-      MBRDecoder mbrdecoder( order, &detlogfst, alpha, theta );
+      //cout << "order: " << order << " alpha: " << endl;
+      MBRDecoder mbrdecoder( N, &detlogfst, alpha, thetas );
       //cout << "decode" << endl;
       mbrdecoder.build_decoder( );
-      Map( *mbrdecoder.omegas[order-1], &result, LogToStdMapper() );
+      Map( *mbrdecoder.omegas[N-1], &result, LogToStdMapper() );
     }
     //cout << "Finished MBR stuff!" << endl;
     if( nbest > 1 ){

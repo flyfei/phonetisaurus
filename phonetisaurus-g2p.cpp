@@ -93,10 +93,10 @@ vector<string> tokenize_string( string input_string, SymbolTable* isyms, string 
 
 void phoneticizeWord( 
 		     const char* g2pmodel_file, string testword, 
-		     int nbest, string sep, bool mbrdecoder, float alpha, float theta, int order,
+		     int nbest, string sep, bool mbrdecoder, float alpha, float precision, float ratio, int order,
 		     int beam=500, int output_words=0 ){
     
-  Phonetisaurus phonetisaurus( g2pmodel_file, mbrdecoder, alpha, theta, order );
+  Phonetisaurus phonetisaurus( g2pmodel_file, mbrdecoder, alpha, precision, ratio, order );
 
     vector<string> entry;
     if( sep.compare("")==0 )
@@ -119,14 +119,16 @@ void phoneticizeWord(
     return;
 }
 
-void phoneticizeSentence( const char* g2pmodel_file, string sentence, int nbest, int beam=500 ){
-    /*
+void phoneticizeSentence( const char* g2pmodel_file, string sentence, int nbest, 
+			  bool mbrdecoder, float alpha, float precision, float ratio, int order, 
+			  int beam=500 ){
+  /*
      Produce a sentence level pronunciation hypothesis for sequence of words.
      Ideally we should concatenate the FSA versions of the word entries prior 
      to running the phoneticizer.  This would further facilitate a later focus on 
      sentence level accent/pronunciation modeling.  Future work!
-    */
-  Phonetisaurus phonetisaurus( g2pmodel_file, false, 0.3, 1.0, 2 );
+  */
+  Phonetisaurus phonetisaurus( g2pmodel_file, mbrdecoder, alpha, precision, ratio, order );
     
     char* tmpstring = (char *)sentence.c_str();
     char *p = strtok(tmpstring, " ");
@@ -143,12 +145,12 @@ void phoneticizeSentence( const char* g2pmodel_file, string sentence, int nbest,
     }
     return;
 }
-    
+
 void phoneticizeTestSet( const char* g2pmodel_file, const char* testset_file, int nbest, string sep, 
-			 bool mbrdecoder, float alpha, float theta, int order,
+			 bool mbrdecoder, float alpha, float precision, float ratio, int order,
 			 int beam=500, int output_words=0 ){
     
-  Phonetisaurus phonetisaurus( g2pmodel_file, mbrdecoder, alpha, theta, order );
+  Phonetisaurus phonetisaurus( g2pmodel_file, mbrdecoder, alpha, precision, ratio, order );
     
     ifstream test_fp;
     test_fp.open( testset_file );
@@ -201,7 +203,7 @@ void phoneticizeTestSet( const char* g2pmodel_file, const char* testset_file, in
     }            
     return;
 }
-    
+
 int main( int argc, char **argv ) {
     
     int c;
@@ -230,7 +232,7 @@ int main( int argc, char **argv ) {
     /*MBR decoder stuff*/
     bool  mbrdecoder = false;
     float alpha = 1.0;
-    float theta = 1.0;
+    float theta = -.1;
     int   order = 2;
 
     /* Help Info */
@@ -353,12 +355,15 @@ Optional:\n\
         exit(0);
     }
     
+    //vector<float> thetas = computeThetas( order );
+    float precision = 0.85;
+    float ratio     = 0.72;
     if( testword_flag==1 ){
-      phoneticizeWord( g2pmodel_file, testword, nbest, sep, mbrdecoder, alpha, theta, order, beam, output_words_flag );
+      phoneticizeWord(    g2pmodel_file, testword,     nbest, sep, mbrdecoder, alpha, precision, ratio, order, beam, output_words_flag );
     }else if( testset_file_flag==1 ){
-      phoneticizeTestSet( g2pmodel_file, testset_file, nbest, sep, mbrdecoder, alpha, theta, order, beam, output_words_flag );
+      phoneticizeTestSet( g2pmodel_file, testset_file, nbest, sep, mbrdecoder, alpha, precision, ratio, order, beam, output_words_flag );
     }else if( sentence_flag==1 ){
-      phoneticizeSentence( g2pmodel_file, sentence, nbest, beam );
+      phoneticizeSentence( g2pmodel_file, sentence, nbest, mbrdecoder, alpha, precision, ratio, order, beam );
     }
     exit(0);
     return 1;
