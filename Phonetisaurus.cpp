@@ -205,7 +205,10 @@ int Phonetisaurus::_compute_thetas( int wlen ){
   float T = 10.0;
   int N   = min( wlen+1, order );
   //cout << "N: " << N << endl;
-  thetas.push_back( -1.0/T );
+  //Theta0 is basically an insertion penalty
+  // -1/T
+  float ip = -0.3;
+  thetas.push_back( -1/T );
   for( int n=1; n<=order; n++ )
       thetas.push_back( 1.0/((N*T*precision) * (pow(ratio,(n-1)))) );
   return N;
@@ -216,13 +219,25 @@ vector<PathData> Phonetisaurus::phoneticize( vector<string> entry, int nbest, in
      Generate pronunciation/spelling hypotheses for an 
      input entry.
     */
-    
     StdVectorFst result;
     StdVectorFst epsMapped;
     StdVectorFst shortest;
     StdVectorFst efst = entryToFSA( entry );
     StdVectorFst smbr;
     int N = _compute_thetas( entry.size() );
+
+    /*Phi matching - 
+      For some reason this performs MUCH worse than 
+      with standard epsilon transitions.  Why?
+    //<phi> is fixed to ID=2
+    PM* pm = new PM( *g2pmodel, MATCH_INPUT, 2 );
+    ComposeFstOptions<StdArc, PM> opts;
+    opts.gc_limit = 0;
+    opts.matcher1 = new PM(efst, MATCH_NONE,  kNoLabel);
+    opts.matcher2 = pm;
+    ComposeFst<StdArc> phicompose(efst, *g2pmodel, opts);
+    VectorFst<StdArc> result(phicompose);
+    */
     Compose( efst, *g2pmodel, &result );
 
     Project(&result, PROJECT_OUTPUT);

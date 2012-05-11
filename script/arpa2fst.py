@@ -29,9 +29,10 @@ class Arpa2WFST( ):
              change the eps symbol - or you will be in for a world of hurt!
     """
 
-    def __init__( self, arpaifile, prefix="test", eps="<eps>", max_order=4, multi_sep="|", io_sep="}", null_sep="_" ):
+    def __init__( self, arpaifile, prefix="test", eps="<eps>", max_order=4, multi_sep="|", io_sep="}", null_sep="_", phi="<phi>" ):
         self.arpaifile = arpaifile
         self.arpaofile = "PREFIX.fst.txt".replace("PREFIX",prefix)
+        self.phi      = phi
         self.ssyms    = set([])
         self.isyms    = set([])
         self.osyms    = set([])
@@ -52,6 +53,8 @@ class Arpa2WFST( ):
         for sym in reserved:
             ofp.write("%s %d\n"%(sym, offset))
             offset += 1
+            if sym in syms:
+                syms.remove(sym)
         for i,sym in enumerate(syms):
             ofp.write("%s %d\n"%(sym,i+offset))
         ofp.close()
@@ -69,8 +72,8 @@ class Arpa2WFST( ):
            Build a single arc.  Add symbols to the symbol tables
            as necessary, but ignore epsilons.
         """
-        if not istate==self.eps: self.ssyms.add(istate)
-        if not ostate==self.eps: self.ssyms.add(ostate)
+        self.ssyms.add(istate)
+        self.ssyms.add(ostate)
         itoks = isym.split(self.multi_sep)
         gtoks = []
         for t in itoks:
@@ -80,9 +83,8 @@ class Arpa2WFST( ):
             isym = self.multi_sep.join(gtoks)
         else:
             isym = self.eps
-
-        if not isym==self.eps: self.isyms.add(isym)
-        if not osym==self.eps: self.osyms.add(osym)
+        self.isyms.add(isym)
+        self.osyms.add(osym)
         arc = "%s\t%s\t%s\t%s\t%f\n" % (istate, ostate, isym, osym, self.to_tropical(weight))
         return arc
 
@@ -154,8 +156,8 @@ if __name__=="__main__":
     arpa = Arpa2WFST( sys.argv[1], prefix=sys.argv[2], max_order=int(sys.argv[3]) )
     arpa.arpa2fst( )
     arpa.print_syms( arpa.ssyms, "%s.ssyms"%(sys.argv[2]), reserved=[arpa.eps] )
-    arpa.print_syms( arpa.isyms, "%s.isyms"%(sys.argv[2]), reserved=[arpa.eps,arpa.multi_sep] )
-    arpa.print_syms( arpa.osyms, "%s.osyms"%(sys.argv[2]), reserved=[arpa.eps] )
+    arpa.print_syms( arpa.isyms, "%s.isyms"%(sys.argv[2]), reserved=[arpa.eps,arpa.multi_sep,arpa.phi] )
+    arpa.print_syms( arpa.osyms, "%s.osyms"%(sys.argv[2]), reserved=[arpa.eps,arpa.multi_sep,arpa.phi] )
     command = "fstcompile --ssymbols=PREFIX.ssyms --isymbols=PREFIX.isyms --keep_isymbols --osymbols=PREFIX.osyms --keep_osymbols PREFIX.fst.txt > PREFIX.fst".\
         replace("PREFIX",sys.argv[2])
     print command

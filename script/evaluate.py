@@ -53,7 +53,7 @@ def evaluate_testset( modelfile, wordlistfile, referencefile, hypothesisfile, ve
     """
 
     if verbose: print "Executing evaluation with command:"
-    command = "../phonetisaurus-g2p -b 5000 -m %s -o -t %s %s -a %0.4f -x %0.4f -d %d > %s" % (modelfile, wordlistfile,  mbrdecode, alpha, theta, order, hypothesisfile)
+    command = "../phonetisaurus-g2p -b 2000 -m %s -o -t %s %s -a %0.4f -x %0.4f -d %d > %s" % (modelfile, wordlistfile,  mbrdecode, alpha, theta, order, hypothesisfile)
     if verbose: print command
     os.system(command)
     references = {}

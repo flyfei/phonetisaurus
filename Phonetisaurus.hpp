@@ -25,6 +25,7 @@
 #include "FstPathFinder.hpp"
 #include "MBRDecoder.hpp"
 using namespace fst;
+typedef PhiMatcher<SortedMatcher<Fst<StdArc> > > PM;
 
 class Phonetisaurus {
     /*

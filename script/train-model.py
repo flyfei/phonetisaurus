@@ -95,8 +95,8 @@ def trainModel( args ):
     arpa = Arpa2WFST( "PREFIX.arpa".replace("PREFIX",args.prefix), prefix=args.prefix, max_order=args.order, multi_sep=multi_sep, io_sep=io_sep, null_sep=null_sep )
     arpa.arpa2fst( )
     arpa.print_syms( arpa.ssyms, "%s.ssyms"%(args.prefix), reserved=[arpa.eps] )
-    arpa.print_syms( arpa.isyms, "%s.isyms"%(args.prefix), reserved=[arpa.eps,arpa.multi_sep] )
-    arpa.print_syms( arpa.osyms, "%s.osyms"%(args.prefix), reserved=[arpa.eps] )
+    arpa.print_syms( arpa.isyms, "%s.isyms"%(args.prefix), reserved=[arpa.eps,arpa.multi_sep,arpa.phi] )
+    arpa.print_syms( arpa.osyms, "%s.osyms"%(args.prefix), reserved=[arpa.eps,arpa.multi_sep,arpa.phi] )
     command = "fstcompile --ssymbols=PREFIX.ssyms --isymbols=PREFIX.isyms --keep_isymbols --osymbols=PREFIX.osyms --keep_osymbols PREFIX.fst.txt > PREFIX.fst".\
         replace("PREFIX",args.prefix)
     print command
