@@ -458,6 +458,8 @@ vector<PathData> M2MFstAligner::write_alignment( const VectorFst<LogArc>& ifst, 
       }
       if( arc.weight == LogWeight::Zero() )
       	arc.weight = 999;
+      if( arc.weight != arc.weight )
+	arc.weight = 999;
       aiter.SetValue(arc);
     }
   }

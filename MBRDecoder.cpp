@@ -87,13 +87,17 @@ void MBRDecoder::decode( ){
   //lattice->SetInputSymbols(syms);
   //lattice->SetOutputSymbols(syms);
   //lattice->Write("normed-lattice.fst");
+  //cout << "Start decoder compose" << endl;
+  ArcSort(lattice, OLabelCompare<LogArc>());
   Compose(*lattice, *mappers[0], omegas[0]);
   Project(omegas[0],PROJECT_INPUT);
+  ArcSort(omegas[0], OLabelCompare<LogArc>());
   //mappers[0]->Write("wmapper-0.fst");
   for( int i=1; i<order; i++ ){
-    //cout << "Order..." << endl;
+    //cout << "decoder compose Order (" << i << ")" << endl;
     Compose(*omegas[i-1], *mappers[i], omegas[i]);
     Project(omegas[i],PROJECT_INPUT);
+    ArcSort(omegas[i],OLabelCompare<LogArc>());
     //mappers[i]->Write("wmapper-"+to_string(i)+".fst");
     //omegas[i]->Write("omega-"+to_string(i)+".fst");
   }
@@ -151,6 +155,7 @@ void MBRDecoder::build_decoders( ){
     //
     //---Generate the order-N lattice--\\
     //
+    //cout << "Lattice mapper compose..." << endl;
     Compose(*lattice, *mappers[i], latticeNs[i]);
     Project(latticeNs[i], PROJECT_OUTPUT);
     RmEpsilon(latticeNs[i]);
@@ -164,7 +169,10 @@ void MBRDecoder::build_decoders( ){
     //
     pathcounters[i]->SetInputSymbols(syms);
     pathcounters[i]->SetOutputSymbols(syms);
+    
     //cout << "  counting paths..." << endl;
+    ArcSort( pathcounters[i], ILabelCompare<LogArc>() );
+    ArcSort( latticeNs[i],    OLabelCompare<LogArc>() );
     countPaths( pathcounters[i], latticeNs[i], i );
   }
   //syms->WriteText("finalsyms.syms");
@@ -190,11 +198,19 @@ void MBRDecoder::countPaths( VectorFst<LogArc>* Psi, VectorFst<LogArc>* latticeN
   //End cascaded matcher stuff
 
   //Cast to normal VectorFst
-  //cout << "   Compose" << endl;
+  /*
+  //cout << "pathcounter   Compose; " << i << endl;
+  latticeN->Write("latticeN.fst");
+  latticeN->InputSymbols()->WriteText("latticeN.isyms");
+  latticeN->OutputSymbols()->WriteText("latticeN.osyms");
+  Psi->Write("PsiN.fst");
+  Psi->InputSymbols()->WriteText("PsiN.isyms");
+  Psi->OutputSymbols()->WriteText("PsiN.osyms");
+  */
   VectorFst<LogArc> result(ComposeFst<LogArc>(*latticeN, *Psi, opts));
   //cout << "Connecting..." << endl;
   //Connect(&result);
-
+  //cout << "done.." << endl;
   //MODIFIED FORWARD IMPL
   UF posteriors;
   posteriors.set_empty_key(NULL);
@@ -349,7 +365,7 @@ void MBRDecoder::build_ngram_cd_fsts( ){
   */
   for( int i=0; i<ngrams.size(); i++ ){
     //Build the Ngram trees from the Ngram sets
-    //cout << "starting cd..." << endl;
+    //cout << "starting cd...: " << i << endl;
     mappers[i]->AddState();
     mappers[i]->SetStart(0);
     set<vector<int> >::iterator it;
@@ -364,7 +380,7 @@ void MBRDecoder::build_ngram_cd_fsts( ){
     //Next, connect the final states based on the allowable 
     // transitions found in the original input word lattice.
     connect_ngram_cd_fst( mappers[i], i );
-
+    //cout << "finished connect" << endl;
     string fstname = "mapper-cd-"+to_string(i)+".fst";
     mappers[i]->SetInputSymbols(syms);
     mappers[i]->SetOutputSymbols(syms);
@@ -376,15 +392,21 @@ void MBRDecoder::build_ngram_cd_fsts( ){
 void MBRDecoder::connect_ngram_cd_fst( VectorFst<LogArc>* mapper, int i ){
   for( set<vector<int> >::iterator ait=ngrams[i].begin(); ait!=ngrams[i].end(); ait++ ){
     vector<int> ngram = (*ait);
+    //cout << "trying to get an arc..." << endl;
     const LogArc& iarc = _get_arc( mapper, mapper->Start(), ngram  );
     ngram.erase(ngram.begin());
     for( set<vector<int> >::iterator bit=ngrams[0].begin(); bit!=ngrams[0].end(); bit++ ){
       string label = _vec_to_string(&ngram) + syms->Find(bit->at(0));
       if( syms->Find(label)!=SymbolTable::kNoSymbol ){
 	ngram.push_back(bit->at(0));
+	//cout << "get that arc!" << endl;
 	const LogArc& oarc = _get_arc( mapper, mapper->Start(), ngram );
-	mapper->AddArc( iarc.nextstate, LogArc( oarc.ilabel, oarc.olabel, LogArc::Weight::One(), oarc.nextstate ) );
+	//cout << "Trying to add oarc: " << iarc.nextstate << " " << syms->Find(oarc.ilabel) << ":" << syms->Find(oarc.olabel) << " " << oarc.nextstate << endl;
+	if( oarc.weight != LogArc::Weight::Zero() )
+	  mapper->AddArc( iarc.nextstate, LogArc( oarc.ilabel, oarc.olabel, LogArc::Weight::One(), oarc.nextstate ) );
+	//cout << "added" << endl;
 	ngram.pop_back();
+	//cout << "popped" << endl;
       }
     }
   }
@@ -396,17 +418,24 @@ const LogArc& MBRDecoder::_get_arc( VectorFst<LogArc>* mapper, int i, vector<int
   //We are ASS-U-ME-ing there is a match.  
   //This will break if I fucked up somewhere else (highly likely).
   if( ngram.size()==1 ){
+    //cout << "really a match?" << endl;
     for( ArcIterator<VectorFst<LogArc> > aiter(*mapper,i); !aiter.Done(); aiter.Next() ){
       const LogArc& arc = aiter.Value();
+      //cout << "looking" << endl;
       if( arc.ilabel==ngram[0] ){
+	//cout << "found a match!" << endl;
 	return arc;
       }
     }
+    //maybe we didn't find a match. this means there is an issue withh the algo
+    return LogArc( 0, 0, LogArc::Weight::Zero(), 0 );
   }
 	
   if( ngram.size()>1 ){
+    //cout << "searching..." << endl;
     for( ArcIterator<VectorFst<LogArc> > aiter(*mapper,i); !aiter.Done(); aiter.Next() ){
       LogArc arc = aiter.Value();
+      //cout << "found" << endl;
       if( arc.ilabel==ngram[0] ){
 	ngram.erase(ngram.begin());
 	return _get_arc( mapper, arc.nextstate, ngram );
@@ -661,6 +690,7 @@ VectorFst<StdArc> MBRDecoder::count_ngrams( VectorFst<StdArc>* std_lattice, int 
   opts.gc_limit = 0;
   opts.matcher1 = new SSM(*std_lattice, MATCH_NONE,  kNoLabel);
   opts.matcher2 = sm;
+  //cout << "ngram count compose " << endl;
   ComposeFst<StdArc> fstc(*std_lattice, *counter, opts);
   VectorFst<StdArc> tmp(fstc);
   Project(&tmp, PROJECT_OUTPUT);

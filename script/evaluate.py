@@ -53,7 +53,7 @@ def evaluate_testset( modelfile, wordlistfile, referencefile, hypothesisfile, ve
     """
 
     if verbose: print "Executing evaluation with command:"
-    command = "../phonetisaurus-g2p -b 2000 -m %s -o -t %s %s -a %0.4f -x %0.4f -d %d > %s" % (modelfile, wordlistfile,  mbrdecode, alpha, theta, order, hypothesisfile)
+    command = "../phonetisaurus-g2p -b 1500 -m %s -o -t %s %s -a %0.4f -x %0.4f -d %d > %s" % (modelfile, wordlistfile,  mbrdecode, alpha, theta, order, hypothesisfile)
     if verbose: print command
     os.system(command)
     references = {}
@@ -80,8 +80,8 @@ if __name__=="__main__":
     parser.add_argument('--prefix',    "-p", help="Prefix used to generate the wordlist, hypothesis and reference files.  Defaults to 'test'.", required=False )
     parser.add_argument('--modelfile', "-m", help="Path to the phoneticizer model.", required=True )
     parser.add_argument('--mbrdecode', "-e", help="Use the mbr decoderl.", default="" )
-    parser.add_argument('--alpha', "-a", help="Alpha for the mbr decoder.", default=5.0, type=float )
-    parser.add_argument('--order', "-o", help="N-gram order for the mbr decoder.", default=2, type=int )
+    parser.add_argument('--alpha', "-a", help="Alpha for the mbr decoder.", default=.65, type=float )
+    parser.add_argument('--order', "-o", help="N-gram order for the mbr decoder.", default=5, type=int )
     parser.add_argument('--theta', "-x", help="Uniform theta for the MBR decoder (should be order specific though...).", default=1.0, type=float )
     parser.add_argument('--ignore', "-i", help="Ignore chars in list.  Chars should be ' ' separated.  Applied only to Hypotheses by default.", required=False, default="" )
     parser.add_argument('--ignore_both', "-b", help="Ignore chars in --ignore both for Hypotheses AND References.", default=False, action="store_true" )

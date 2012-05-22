@@ -256,6 +256,7 @@ vector<PathData> Phonetisaurus::phoneticize( vector<string> entry, int nbest, in
       detlogfst.SetOutputSymbols(g2pmodel->OutputSymbols());
       //cout << "build MBRDecoder" << endl;
       //cout << "order: " << order << " alpha: " << endl;
+      //detlogfst.Write("abbreviate.fst");
       MBRDecoder mbrdecoder( N, &detlogfst, alpha, thetas );
       //cout << "decode" << endl;
       mbrdecoder.build_decoder( );
