@@ -16,7 +16,7 @@
 #    You should have received a copy of the GNU General Public 
 #    License along with Phonetisaurus. If not, see http://www.gnu.org/licenses/.
 #
-CC=g++ 
+CC=g++ -O2
 LIBS=-lfst -ldl -lm
 OUT=phonetisaurus-g2p m2m-fst-aligner
 TMP=*.o
