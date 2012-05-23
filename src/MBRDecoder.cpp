@@ -1,3 +1,32 @@
+/*
+ Copyright (c) [2012-], Josef Robert Novak
+ All rights reserved.
+
+ Redistribution and use in source and binary forms, with or without
+  modification, are permitted #provided that the following conditions
+  are met:
+
+  * Redistributions of source code must retain the above copyright 
+    notice, this list of conditions and the following disclaimer.
+    * Redistributions in binary form must reproduce the above 
+    copyright notice, this list of #conditions and the following 
+    disclaimer in the documentation and/or other materials provided 
+    with the distribution.
+
+ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS 
+ "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT 
+ LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS 
+ FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE 
+ COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, 
+ INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES 
+ (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR 
+ SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) 
+ HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, 
+ STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) 
+ ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED 
+ OF THE POSSIBILITY OF SUCH DAMAGE.
+*
+*/
 #include "MBRDecoder.hpp"
 
 MBRDecoder::MBRDecoder( ){
@@ -198,15 +227,6 @@ void MBRDecoder::countPaths( VectorFst<LogArc>* Psi, VectorFst<LogArc>* latticeN
   //End cascaded matcher stuff
 
   //Cast to normal VectorFst
-  /*
-  //cout << "pathcounter   Compose; " << i << endl;
-  latticeN->Write("latticeN.fst");
-  latticeN->InputSymbols()->WriteText("latticeN.isyms");
-  latticeN->OutputSymbols()->WriteText("latticeN.osyms");
-  Psi->Write("PsiN.fst");
-  Psi->InputSymbols()->WriteText("PsiN.isyms");
-  Psi->OutputSymbols()->WriteText("PsiN.osyms");
-  */
   VectorFst<LogArc> result(ComposeFst<LogArc>(*latticeN, *Psi, opts));
   //cout << "Connecting..." << endl;
   //Connect(&result);
@@ -393,14 +413,14 @@ void MBRDecoder::connect_ngram_cd_fst( VectorFst<LogArc>* mapper, int i ){
   for( set<vector<int> >::iterator ait=ngrams[i].begin(); ait!=ngrams[i].end(); ait++ ){
     vector<int> ngram = (*ait);
     //cout << "trying to get an arc..." << endl;
-    const LogArc& iarc = _get_arc( mapper, mapper->Start(), ngram  );
+    LogArc iarc = _get_arc( mapper, mapper->Start(), ngram  );
     ngram.erase(ngram.begin());
     for( set<vector<int> >::iterator bit=ngrams[0].begin(); bit!=ngrams[0].end(); bit++ ){
       string label = _vec_to_string(&ngram) + syms->Find(bit->at(0));
       if( syms->Find(label)!=SymbolTable::kNoSymbol ){
 	ngram.push_back(bit->at(0));
 	//cout << "get that arc!" << endl;
-	const LogArc& oarc = _get_arc( mapper, mapper->Start(), ngram );
+	LogArc oarc = _get_arc( mapper, mapper->Start(), ngram );
 	//cout << "Trying to add oarc: " << iarc.nextstate << " " << syms->Find(oarc.ilabel) << ":" << syms->Find(oarc.olabel) << " " << oarc.nextstate << endl;
 	if( oarc.weight != LogArc::Weight::Zero() )
 	  mapper->AddArc( iarc.nextstate, LogArc( oarc.ilabel, oarc.olabel, LogArc::Weight::One(), oarc.nextstate ) );
@@ -414,13 +434,13 @@ void MBRDecoder::connect_ngram_cd_fst( VectorFst<LogArc>* mapper, int i ){
   return;
 }
 
-const LogArc& MBRDecoder::_get_arc( VectorFst<LogArc>* mapper, int i, vector<int> ngram ){
+LogArc MBRDecoder::_get_arc( VectorFst<LogArc>* mapper, int i, vector<int> ngram ){
   //We are ASS-U-ME-ing there is a match.  
   //This will break if I fucked up somewhere else (highly likely).
   if( ngram.size()==1 ){
     //cout << "really a match?" << endl;
     for( ArcIterator<VectorFst<LogArc> > aiter(*mapper,i); !aiter.Done(); aiter.Next() ){
-      const LogArc& arc = aiter.Value();
+      LogArc arc = aiter.Value();
       //cout << "looking" << endl;
       if( arc.ilabel==ngram[0] ){
 	//cout << "found a match!" << endl;
@@ -428,7 +448,7 @@ const LogArc& MBRDecoder::_get_arc( VectorFst<LogArc>* mapper, int i, vector<int
       }
     }
     //maybe we didn't find a match. this means there is an issue withh the algo
-    return LogArc( 0, 0, LogArc::Weight::Zero(), 0 );
+    return LogArc( 0, 0, LogArc::Weight::Zero(), 1 );
   }
 	
   if( ngram.size()>1 ){

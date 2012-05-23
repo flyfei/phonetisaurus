@@ -1,15 +1,15 @@
 # README #
-anonymized phoneticizer
+Josef Robert Novak - 2012-05-23
+Phonetisaurus G2P
 
 ## Introduction to WFST-based LMBR decoding for G2P ##
-[anonymous-lmbr-g2p.pdf](https://bitbucket.org/phoneticizer/phoneticizer/downloads/anonymous-lmbr-g2p.pdf)
+[phonetisaurus-lmbr-g2p.pdf](http://phonetisaurus.googlecode.com/files/phonetisaurus-lmbr-g2p.pdf)
  
 
 ## DEPENDENCIES ##
 
 * g++
 * Python 2.7+
-* SWIG 
 * OpenFst
     * [http://www.openfst.org](http://www.openfst.org)
     * `$./configure --enable-compact-fsts --enable-const-fsts --enable-far --enable-lookahead-fsts --enable-pdt`
@@ -24,8 +24,8 @@ anonymized phoneticizer
 
 ## COMPILATION ##
 
+    $ cd src
     $ make
-    $ ./mk_swig.sh
 
 ## EXAMPLE USAGE ##
 
@@ -34,13 +34,13 @@ anonymized phoneticizer
 #### alignment ####
     $ cd script
     $ mkdir g014a2
-    $ ../m2m-aligner.py -s1 -s2 -wa g014a2/g014a2.corpus -a ../data/g014a2.train.bsf
+    $ ../phonetisaurus-align --input=../data/g014a2.train.bsf --ofile=g014a2/g014a2.corpus
 
 #### model building ####
     $ ./train-model.py --dict ../data/g014a2.train.bsf --prefix g014a2/g014a2 --noalign --palign --order 7
 
 ### Basic evaluation ###
-    $ ./evaluate.py --modelfile g014a2/g014a2.fst --testfile ../data/g014a2.test.tabbed.bsf --prefix g014a2/g014a2 
+    $ ./evaluate.py --modelfile g014a2/g014a2.fst --testfile ../data/g014a2.test.tabbed.bsf --prefix g014a2/g014a2
     Words: 4951  Hyps: 4951 Refs: 4951
     ######################################################################
                           EVALUATION RESULTS                          
@@ -57,11 +57,11 @@ anonymized phoneticizer
     ######################################################################
 
 #### One word example ####
-    $ ../phonetisaurus-g2p -m g014a2/g014a2.fst -w abbreviate
+    $ ../phonetisaurus-g2p --model=g014a2/g014a2.fst --input=abbreviate
     25.6                   @ b r i v i e t
 
 #### Nbest example ####
-    $ ../phonetisaurus-g2p -m g014a2/g014a2.fst -w abbreviate -n 5
+    $ ../phonetisaurus-g2p --model=g014a2/g014a2.fst --input=abbreviate --nbest=5
     25.664                 @ b r i v i e t
     28.2066                @ b i v i e t
     29.0391                x b b r i v i e t
@@ -69,22 +69,22 @@ anonymized phoneticizer
     29.268                 @ b r E v i e t
 
 #### Output words ####
-    $ ../phonetisaurus-g2p -m g014a2/g014a2.fst -w abbreviate -n 3 -o
+    $ ../phonetisaurus-g2p --model=g014a2/g014a2.fst --input=abbreviate --nbest=3 --words
     abbreviate             25.664               @ b r i v i e t
     abbreviate             28.2066              @ b i v i e t
     abbreviate             29.0391              x b b r i v i e t
 
 #### LMBR decoding ####
-    $ ../phonetisaurus-g2p -m g014a2/g014a2.fst -w abbreviate -b 1000 -n 3 -o -r -a .6 -d 2 
-    abbreviate             -0.348123            @ b r i v i e t
-    abbreviate             -0.214035            @ b b r i v i e t
-    abbreviate             0.0421478            @ b i v i e t
+    $ ../phonetisaurus-g2p --model=g014a2/g014a2.fst --input=abbreviate --beam=1000 --nbest=3 --words --mbr --alpha=.6 --order=2
+    abbreviate	     -0.436579		       @ b r i v i e t
+    abbreviate	     -0.330031		       @ b b r i v i e t
+    abbreviate	     -0.0922226		       @ b i v i e t
 
 #### LMBR decoding - higher n-gram order ####
-    $ ../phonetisaurus-g2p -m g014a2/g014a2.fst -w abbreviate -b 1000 -n 3 -o -r -a .6 -d 7
-    abbreviate           0.285165             @ b r i v i e t
-    abbreviate           2.5544               x b r i v i e t
-    abbreviate           2.57029              @ b b r i v i e t
+    $ ../phonetisaurus-g2p --model=g014a2/g014a2.fst --input=abbreviate --beam=1000 --nbest=3 --words --mbr --alpha=.6 --order=7
+    abbreviate	      0.122205			@ b r i v i e t
+    abbreviate	      2.12447			x b r i v i e t
+    abbreviate	      2.12672			@ b b r i v i e t
 
 #### LMBR evaluation ####
 Example evaluation for the NETtalk-15k/5k partition.
@@ -92,22 +92,25 @@ This uses the latest version of the LMBR decoder which
 incorporates a length-normalized N-gram factor.
 This is a slight improvement over the submitted paper.
 
-    $ cd script
-    $ ./evaluate.py --modelfile g014a2/g014a2.fst --testfile ../data/g014a2.test.tabbed.bsf --prefix g014a2/g014a2 --order 6 --alpha .6 --mbrdecode "\-r"
+    $ ./evaluate.py --modelfile g014a2/g014a2.fst --testfile ../data/g014a2.test.tabbed.bsf --prefix g014a2/g014a2 --order 6 --alpha .65 --mbrdecode
+      Command: ../phonetisaurus-g2p --model=g014a2/g014a2.fst --input=g014a2/g014a2.words \
+                --alpha=0.6500 --prec=0.8500 --ratio=0.7200 --order=6 --words --isfile --mbr \
+		 > g014a2/g014a2.hyp
     Words: 4951  Hyps: 4951 Refs: 4951
     ######################################################################
-                              EVALUATION RESULTS                          
+                          EVALUATION RESULTS                          
     ----------------------------------------------------------------------
     (T)otal tokens in reference: 30799
-    (M)atches: 28486  (S)ubstitutions: 2142  (I)nsertions: 201  (D)eletions: 171
-    % Correct (M/T)           -- %92.49
-    % Token ER ((S+I+D)/T)    -- %8.16
-    % Accuracy 1.0-ER         -- %91.84
+    (M)atches: 28484  (S)ubstitutions: 2148  (I)nsertions: 202  (D)eletions: 167
+    % Correct (M/T)           -- %92.48
+    % Token ER ((S+I+D)/T)    -- %8.17
+    % Accuracy 1.0-ER         -- %91.83
            --------------------------------------------------------       
     (S)equences: 4951  (C)orrect sequences: 3294  (E)rror sequences: 1657
     % Sequence ER (E/S)       -- %33.47
     % Sequence Acc (1.0-E/S)  -- %66.53
     ######################################################################
+
 
 ### Error analysis ###
 Highly flexibly may be used for full evaluations or just comparing arbitrary strings.
@@ -124,4 +127,4 @@ for integration with the RNNLM toolkit has slightly different requirements.
 
 See the repository downloads section:
 
-[g2p2rnn.tgz](https://bitbucket.org/phoneticizer/phoneticizer/downloads/g2p2rnn.tgz)
+[g2prnn.tgz](http://phonetisaurus.googlecode.com/files/g2p2rnn.tgz)

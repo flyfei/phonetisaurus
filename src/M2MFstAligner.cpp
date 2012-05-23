@@ -1,5 +1,32 @@
 /*
- *  M2MFstAligner.cpp 
+ M2MFstAligner.cpp 
+
+ Copyright (c) [2012-], Josef Robert Novak
+ All rights reserved.
+
+ Redistribution and use in source and binary forms, with or without
+  modification, are permitted #provided that the following conditions
+  are met:
+
+  * Redistributions of source code must retain the above copyright 
+    notice, this list of conditions and the following disclaimer.
+    * Redistributions in binary form must reproduce the above 
+    copyright notice, this list of #conditions and the following 
+    disclaimer in the documentation and/or other materials provided 
+    with the distribution.
+
+ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS 
+ "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT 
+ LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS 
+ FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE 
+ COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, 
+ INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES 
+ (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR 
+ SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) 
+ HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, 
+ STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) 
+ ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED 
+ OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  */
 #include <fst/fstlib.h>
@@ -123,20 +150,7 @@ M2MFstAligner::M2MFstAligner( string _model_file ){
   seq2_del = params[1].compare("true") ? false : true;
   seq1_max = atoi(params[2].c_str());
   seq2_max = atoi(params[3].c_str());
-  /*
-  cout << "0: " << isyms->Find(i) << endl;
-  cout << "1: " << isyms->Find(1) << endl;
-  cout << "2: " << isyms->Find(2) << endl;
-  cout << "3: " << isyms->Find(3) << endl;
-  cout << "4: " << isyms->Find(4) << endl;
-  cout << "seq1_del: " << seq1_del << endl;
-  cout << "seq2_del: " << seq2_del << endl;
-  cout << "seq1_max: " << seq1_max << endl;
-  cout << "seq2_max: " << seq2_max << endl;
-  cout << "seq1_sep: " << seq1_sep << endl;
-  cout << "seq2_sep: " << seq2_sep << endl;
-  cout << "s1s2_sep: " << s1s2_sep << endl;
-  */
+
 }
 
 void M2MFstAligner::write_model( string _model_file ){
