@@ -1,95 +1,36 @@
 /*
- *  phonetisaurus-g2p.hpp 
- *  
- *  Created by Josef Novak on 2011-04-07.
- *  Copyright 2011 Josef Novak. All rights reserved.
+ Copyright (c) [2012-], Josef Robert Novak
+ All rights reserved.
 
-    This file is part of Phonetisaurus.
+ Redistribution and use in source and binary forms, with or without
+  modification, are permitted #provided that the following conditions
+  are met:
 
-    Phonetisaurus is free software: you can redistribute it 
-    and/or modify it under the terms of the GNU General Public 
-    License as published by the Free Software Foundation, either 
-    version 3 of the License, or (at your option) any later version.
+ * Redistributions of source code must retain the above copyright 
+    notice, this list of conditions and the following disclaimer.
+ * Redistributions in binary form must reproduce the above 
+    copyright notice, this list of #conditions and the following 
+    disclaimer in the documentation and/or other materials provided 
+    with the distribution.
 
-    Phonetisaurus is distributed in the hope that it will be useful, but 
-    WITHOUT ANY WARRANTY; without even the implied warranty of 
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU 
-    General Public License for more details.
-
-    You should have received a copy of the GNU General Public 
-    License along with Phonetisaurus. If not, see http://www.gnu.org/licenses/.
- *
- */
+ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS 
+ "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT 
+ LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS 
+ FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE 
+ COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, 
+ INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES 
+ (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR 
+ SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) 
+ HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, 
+ STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) 
+ ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED 
+ OF THE POSSIBILITY OF SUCH DAMAGE.
+*
+*/
 #include "Phonetisaurus.hpp"
-#include <stdio.h>
-#include <string>
-#include <getopt.h>
-#include "utf8.h"
+#include "util.hpp"
+using namespace fst;
 
-
-vector<string> tokenize_utf8_string( string utf8_string, SymbolTable* isyms ) {
-    /*
-     Support for tokenizing a utf-8 string.
-     http://stackoverflow.com/questions/2852895/c-iterate-or-split-utf-8-string-into-array-of-symbols#2856241
-    */
-    char* str = (char*)utf8_string.c_str(); // utf-8 string
-    char* str_i = str;                      // string iterator
-    char* str_j = str;
-    char* end = str+strlen(str)+1;          // end iterator
-    vector<string> string_vec;
-    
-    do
-    {
-        str_j = str_i;
-        uint32_t code = utf8::next(str_i, end); // get 32 bit code of a utf-8 symbol
-        if (code == 0)
-            continue;
-        int start = strlen(str) - strlen(str_j);
-        int end   = strlen(str) - strlen(str_i);
-        int len   = end - start;
-        if( isyms->Find( utf8_string.substr(start,len) )==-1 ){
-                cerr << "Symbol: '" << utf8_string.substr(start,len) 
-                << "' not found in input symbols table." << endl
-		//<< "Aborting phoneticization of word: '" << utf8_string << "'." << endl
-         	<< "Mapping to null..." << endl;
-		
-                //<< "Aborting phoneticizer job." << endl;
-		//exit(-1);
-        }else{
-          string_vec.push_back( utf8_string.substr(start,len) );
-	}
-    }
-    while ( str_i < end );
-    
-    return string_vec;
-}
-
-vector<string> tokenize_string( string input_string, SymbolTable* isyms, string sep ){
-    /*
-     Tokenize the input using a user-specified character.
-    */
-    string strcopy = input_string.c_str();
-    char* tmpstring = (char *)input_string.c_str();
-    char *p = strtok(tmpstring, sep.c_str());
-    vector<string> entry;
-    
-    int i=0;
-    while (p) {
-        if( isyms->Find(p)==-1 ){
-            cerr << "Symbol: '" << p 
-            << "' not found in input symbols table." << endl
-            << "Mapping to null..." << endl;
-	    //<< "Aborting phoneticization of word: '" << strcopy << "'." << endl
-	    //<< "Aborting phoneticizer job." << endl;
-            //exit(-1);
-        }else{
-	  entry.push_back(p);
-	}
-	p = strtok(NULL, sep.c_str());
-    }
-    
-    return entry;
-}
 
 void phoneticizeWord( 
 		     const char* g2pmodel_file, string testword, 
@@ -97,274 +38,117 @@ void phoneticizeWord(
 		     int beam=500, int output_words=0 ){
     
   Phonetisaurus phonetisaurus( g2pmodel_file, mbrdecoder, alpha, precision, ratio, order );
+  
+  vector<string>   entry = tokenize_entry( &testword, &sep, phonetisaurus.isyms );
 
-    vector<string> entry;
-    if( sep.compare("")==0 )
-        entry = tokenize_utf8_string( testword, phonetisaurus.isyms );
-    else
-        entry = tokenize_string( testword, phonetisaurus.isyms, " " );
+  vector<PathData> paths = phonetisaurus.phoneticize( entry, nbest, beam );
 
-    vector<PathData> paths = phonetisaurus.phoneticize( entry, nbest, beam );
-    if( output_words==0){
-      while( phonetisaurus.printPaths( paths, nbest )==true ){
-	nbest++;
-	paths = phonetisaurus.phoneticize( entry, nbest, beam );
-      }
-    }else{
-      while( phonetisaurus.printPaths( paths, nbest, "", testword )==true){
-	nbest++;
-	paths = phonetisaurus.phoneticize( entry, nbest, beam );
-      }
+  if( output_words==0){
+    while( phonetisaurus.printPaths( paths, nbest )==true ){
+      nbest++;
+      paths = phonetisaurus.phoneticize( entry, nbest, beam );
     }
-    return;
+  }else{
+    while( phonetisaurus.printPaths( paths, nbest, "", testword )==true){
+      nbest++;
+      paths = phonetisaurus.phoneticize( entry, nbest, beam );
+    }
+  }
+
+  return;
 }
 
-void phoneticizeSentence( const char* g2pmodel_file, string sentence, int nbest, 
-			  bool mbrdecoder, float alpha, float precision, float ratio, int order, 
-			  int beam=500 ){
-  /*
-     Produce a sentence level pronunciation hypothesis for sequence of words.
-     Ideally we should concatenate the FSA versions of the word entries prior 
-     to running the phoneticizer.  This would further facilitate a later focus on 
-     sentence level accent/pronunciation modeling.  Future work!
-  */
-  Phonetisaurus phonetisaurus( g2pmodel_file, mbrdecoder, alpha, precision, ratio, order );
-    
-    char* tmpstring = (char *)sentence.c_str();
-    char *p = strtok(tmpstring, " ");
-    string word;
-    
-    int i=0;
-    while (p) {
-        word = p;
-        vector<string> entry = tokenize_utf8_string( word, phonetisaurus.isyms );
-        vector<PathData> paths = phonetisaurus.phoneticize( entry, nbest, beam );
-        phonetisaurus.printPaths( paths, nbest );
-        
-        p = strtok(NULL, " ");
-    }
-    return;
-}
 
-void phoneticizeTestSet( const char* g2pmodel_file, const char* testset_file, int nbest, string sep, 
-			 bool mbrdecoder, float alpha, float precision, float ratio, int order,
+void phoneticizeTestSet( const char* g2pmodel_file, string testset_file, 
+			 int nbest, string sep, bool mbrdecoder, float alpha, float precision, float ratio, int order,
 			 int beam=500, int output_words=0 ){
     
   Phonetisaurus phonetisaurus( g2pmodel_file, mbrdecoder, alpha, precision, ratio, order );
     
-    ifstream test_fp;
-    test_fp.open( testset_file );
-    string line;
+  ifstream test_fp;
+  test_fp.open( testset_file.c_str() );
+  string line;
     
-    if( test_fp.is_open() ){
-        while( test_fp.good() ){
-            getline( test_fp, line );
-            if( line.compare("")==0 )
-                continue;
+  if( test_fp.is_open() ){
+    while( test_fp.good() ){
+      getline( test_fp, line );
+      if( line.compare("")==0 )
+	continue;
             
-            char* tmpstring = (char *)line.c_str();
-            char *p = strtok(tmpstring, "\t");
-            string word;
-            string pron;
+      char* tmpstring = (char *)line.c_str();
+      char *p = strtok(tmpstring, "\t");
+      string word;
+      string pron;
             
-            int i=0;
-            while (p) {
-                if( i==0 ) 
-                    word = p;
-                else
-                    pron = p;
-                i++;
-                p = strtok(NULL, "\t");
-            }
+      int i=0;
+      while (p) {
+	if( i==0 ) 
+	  word = p;
+	else
+	  pron = p;
+	i++;
+	p = strtok(NULL, "\t");
+      }
             
-            vector<string> entry;
-            if( sep.compare("")==0 )
-                entry = tokenize_utf8_string( word, phonetisaurus.isyms );
-            else
-                entry = tokenize_string( word, phonetisaurus.isyms, sep );
-            
-            vector<PathData> paths = phonetisaurus.phoneticize( entry, nbest, beam=beam );
-	    int nbest_new = nbest;
-	    if( output_words==0){
-	      while( phonetisaurus.printPaths( paths, nbest_new, pron )==true ){
-		nbest_new++;
-		paths = phonetisaurus.phoneticize( entry, nbest_new, beam );
-	      }
-	    }else{
-	      while( phonetisaurus.printPaths( paths, nbest_new, pron, word )==true){
-		nbest_new++;
-		paths = phonetisaurus.phoneticize( entry, nbest_new, beam );
-	      }
-	    }
-        }
-        test_fp.close();
-    }else{
-        cout <<"Problem opening test file..." << endl;
-    }            
-    return;
+      vector<string>   entry = tokenize_entry( &word, &sep, phonetisaurus.isyms );
+      
+      vector<PathData> paths = phonetisaurus.phoneticize( entry, nbest, beam=beam );
+      int nbest_new = nbest;
+      if( output_words==0){
+	while( phonetisaurus.printPaths( paths, nbest_new, pron )==true ){
+	  nbest_new++;
+	  paths = phonetisaurus.phoneticize( entry, nbest_new, beam );
+	}
+      }else{
+	while( phonetisaurus.printPaths( paths, nbest_new, pron, word )==true){
+	  nbest_new++;
+	  paths = phonetisaurus.phoneticize( entry, nbest_new, beam );
+	}
+      }
+    }
+    test_fp.close();
+  }else{
+    cout <<"Problem opening test file..." << endl;
+  }            
+  return;
 }
 
+
+DEFINE_string( model,     "", "The input WFST G2P model.");
+DEFINE_string( input,     "", "A word or test file.");
+DEFINE_bool(   isfile, false, "'--input' is a file.");
+DEFINE_int32(  nbest,      1, "Print out the N-best pronunciations.");
+DEFINE_int32(  beam,     500, "N-best search beam.");
+DEFINE_string( sep,       "", "Separator token for input words.");
+DEFINE_bool(   mbr,    false, "Use the Lattice Minimum Bayes-Risk decoder");
+DEFINE_bool(   words,  false, "Output words with hypotheses.");
+DEFINE_double( alpha,    0.6, "The alpha LM scale factor for the LMBR decoder.");
+DEFINE_int32(  order,      6, "The N-gram order for the MBR decoder.");
+DEFINE_double( prec,    0.85, "The N-gram precision factor for the LMBR decoder.");
+DEFINE_double( ratio,   0.72, "The N-gram ratio factor for the LMBR decoder.");
+
+
 int main( int argc, char **argv ) {
-    
-    int c;
-    int g2pmodel_file_flag = 0;
-    int testset_file_flag  = 0;
-    int testword_flag      = 0;
-    int sentence_flag      = 0;
-    int nbest_flag         = 0;
-    int beam_flag          = 0;
-    int sep_flag           = 0;
-    int output_words_flag  = 0;
-    int mbrdecoder_flag    = 0;
-    int alpha_flag         = 0;
-    int theta_flag         = 0;
-    int order_flag         = 0;
+  string usage = "phonetisaurus-g2p decoder.\n\n Usage: ";
+  set_new_handler(FailedNewHandler);
+  SetFlags(usage.c_str(), &argc, &argv, false );
 
-    /* File names */
-    const char* g2pmodel_file;
-    const char* testset_file;
-    string testword;
-    string sentence;
-    string sep = "";
-    int nbest  = 1;
-    int beam   = 500;
+  if( FLAGS_isfile==true ){
+    //If its a file, go for it
+    phoneticizeTestSet( 
+		       FLAGS_model.c_str(), FLAGS_input, FLAGS_nbest,
+		       FLAGS_sep, FLAGS_mbr, FLAGS_alpha, FLAGS_prec,
+		       FLAGS_ratio, FLAGS_order, FLAGS_beam, FLAGS_words
+			);
+  }else{
+    //Otherwise we just have a word
+    phoneticizeWord(    
+		    FLAGS_model.c_str(), FLAGS_input, FLAGS_nbest, 
+		    FLAGS_sep, FLAGS_mbr, FLAGS_alpha, FLAGS_prec, 
+		    FLAGS_ratio, FLAGS_order, FLAGS_beam, FLAGS_words 
+			);
+  }
+  exit(0);
 
-    /*MBR decoder stuff*/
-    bool  mbrdecoder = false;
-    float alpha = 1.0;
-    float theta = -.1;
-    int   order = 2;
-
-    /* Help Info */
-    char help_info[1024];
-    
-	sprintf(help_info, "Syntax: %s -m g2p-model.fst [-t testfile | -w testword | -s 'a few words'] [-n N]\n\
-Required:\n\
-   -m --model: WFST representing the G2P/P2G model.\n\
-   -t --testset: File containing a list of input words/pronunciations to phoneticize.\n\
-   -w --word: A word/pronunciation to phoneticize.\n\
-Optional:\n\
-   -s --sent: A ' ' separated sentence to phoneticize.\n\
-   -n --nbest: Optional max number of hypotheses to produce for each entry.  Defaults to 1.\n\
-   -o --output_words: Output the orthography along with the pronunciation hypotheses and scores.\n\
-   -e --sep: Optional separator character for tokenization.  Defaults to ''.\n\
-   -b --beam: Optional beam for N-best search.  Defaults to '500'. Larger beams will yield more N-best, but will not affect accuracy.\n\
-   -r --mbrdecoder: Use the MBR decoder.  Defaults to 'false'.\n\
-   -x --theta: Theta parameter for the MBR decoder.  Defaults to '1.0'.\n\
-   -a --alpha: Alpha LM scale factor for the MBR decoder.  Defaults to '1.0'.\n\
-   -d --order: Ngram LM order for the MBR decoder.  Defaults to '2'.\n\
-   -h --help: Print this help message.\n\n", argv[0]);
-    
-    /* Begin argument parsing */
-    while( 1 ) {
-        static struct option long_options[] = 
-        {
-            /* These options set a flag */
-            {"model",      required_argument, 0, 'm'},
-            {"testset",    required_argument, 0, 't'},
-            {"word",       required_argument, 0, 'w'},
-            {"sent",       required_argument, 0, 's'},
-            {"nbest",      required_argument, 0, 'n'},
-	    {"output_words", no_argument, 0, 'o'},
-	    {"mbrdecoder", no_argument, 0, 'r'},
-            {"beam",       required_argument, 0, 'b'},
-            {"sep",        required_argument, 0, 'e'},
-	    {"alpha",      required_argument, 0, 'a'},
-	    {"theta",      required_argument, 0, 'x'},
-	    {"order",      required_argument, 0, 'd'},
-            {"help",       no_argument, 0, 'h'},
-            {0,0,0,0}
-        };
-    
-        int option_index = 0;
-        c = getopt_long( argc, argv, "hora:x:d:m:t:w:b:n:s:e:", long_options, &option_index);
-        
-        if ( c == -1 )
-            break;
-        switch ( c ) {
-            case 0:
-                if ( long_options[option_index].flag != 0)
-                    break;
-            case 'm':
-                g2pmodel_file_flag = 1;
-                g2pmodel_file = optarg;
-                break;
-            case 't':
-                testset_file_flag = 1;
-                testset_file = optarg;
-                break;
-            case 'w':
-                testword_flag = 1;
-                testword = optarg;
-                break;
-            case 'n':
-                nbest_flag = 1;
-                nbest = atoi(optarg);
-                break;
-	    case 'o':
-	        output_words_flag = 1;
-		break;
-	    case 'a':
-	        alpha_flag = 1;
-	        alpha = atof(optarg);
-	        break;
-	    case 'x':
-	        theta_flag = 1;
-	        theta = atof(optarg);
-	        break;
-	    case 'd':
-	        order_flag = 1;
-	        order = atoi(optarg);
-	        break;
-	    case 'r':
-	        mbrdecoder_flag = 1;
-		mbrdecoder = true;
-	        break;
-            case 'b':
-                beam_flag = 1;
-		beam = atoi(optarg);
-		break;
-            case 's':
-                sentence_flag = 1;
-                sentence = optarg;
-                break;
-            case 'e':
-                sep_flag = 1;
-                sep = optarg;
-                break;
-            case 'h':
-                printf("%s", help_info);
-                exit(0);
-                break;
-            default:
-                abort ();
-        }
-    }
-    
-    if( g2pmodel_file_flag==0 ){
-        printf("%s", help_info);
-        exit(0);
-    }
-    if( testset_file_flag + testword_flag + sentence_flag == 0 ){
-        printf("%s", help_info);
-        exit(0);
-    }
-    if( testset_file_flag + testword_flag + sentence_flag == 3 ){
-        printf("Please enter only one of --testset, --word or --sent.");
-        printf("%s", help_info);
-        exit(0);
-    }
-    
-    //vector<float> thetas = computeThetas( order );
-    float precision = 0.85;
-    float ratio     = 0.72;
-    if( testword_flag==1 ){
-      phoneticizeWord(    g2pmodel_file, testword,     nbest, sep, mbrdecoder, alpha, precision, ratio, order, beam, output_words_flag );
-    }else if( testset_file_flag==1 ){
-      phoneticizeTestSet( g2pmodel_file, testset_file, nbest, sep, mbrdecoder, alpha, precision, ratio, order, beam, output_words_flag );
-    }else if( sentence_flag==1 ){
-      phoneticizeSentence( g2pmodel_file, sentence, nbest, mbrdecoder, alpha, precision, ratio, order, beam );
-    }
-    exit(0);
-    return 1;
+  return 1;
 }

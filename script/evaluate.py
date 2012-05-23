@@ -42,7 +42,10 @@ def process_testset( testfile, wordlist_out, reference_out, verbose=False ):
     reference_ofp.close()
     return
 
-def evaluate_testset( modelfile, wordlistfile, referencefile, hypothesisfile, verbose=False, ignore="", ignore_both=False, regex_ignore="", mbrdecode="", alpha=1.0, theta=1.0, order=2 ):
+def evaluate_testset( 
+    modelfile, wordlistfile, referencefile, hypothesisfile, verbose=False, ignore="", ignore_both=False, regex_ignore="", 
+    mbrdecode="", alpha=.65, precision=.85, ratio=.72, order=6
+    ):
     """
       Evaluate the Word Error Rate (WER) for the test set.
       Each word should only be evaluated once.  The word is counted as 
@@ -53,8 +56,9 @@ def evaluate_testset( modelfile, wordlistfile, referencefile, hypothesisfile, ve
     """
 
     if verbose: print "Executing evaluation with command:"
-    command = "../phonetisaurus-g2p -b 1500 -m %s -o -t %s %s -a %0.4f -x %0.4f -d %d > %s" % (modelfile, wordlistfile,  mbrdecode, alpha, theta, order, hypothesisfile)
-    if verbose: print command
+    command = "../phonetisaurus-g2p --model=%s --input=%s --alpha=%0.4f --prec=%0.4f --ratio=%0.4f --order=%d --words --isfile %s > %s" \
+        % (modelfile, wordlistfile, alpha, precision, ratio, order, mbrdecode, hypothesisfile)
+    print command
     os.system(command)
     references = {}
     for entry in open(referencefile,"r"):
@@ -76,18 +80,24 @@ if __name__=="__main__":
 
     example = """%s --modelfile someg2pmodel.fst --testfile test.dic --wordlist_out test.words --reference_out test.ref --hypothesisfile test.hyp""" % sys.argv[0]
     parser = argparse.ArgumentParser(description=example)
-    parser.add_argument('--testfile',  "-t", help="The test file in dictionary format. 1 word, 1 pronunciation per line, separated by '\\t'.", required=True )
-    parser.add_argument('--prefix',    "-p", help="Prefix used to generate the wordlist, hypothesis and reference files.  Defaults to 'test'.", required=False )
-    parser.add_argument('--modelfile', "-m", help="Path to the phoneticizer model.", required=True )
-    parser.add_argument('--mbrdecode', "-e", help="Use the mbr decoderl.", default="" )
-    parser.add_argument('--alpha', "-a", help="Alpha for the mbr decoder.", default=.65, type=float )
-    parser.add_argument('--order', "-o", help="N-gram order for the mbr decoder.", default=5, type=int )
-    parser.add_argument('--theta', "-x", help="Uniform theta for the MBR decoder (should be order specific though...).", default=1.0, type=float )
-    parser.add_argument('--ignore', "-i", help="Ignore chars in list.  Chars should be ' ' separated.  Applied only to Hypotheses by default.", required=False, default="" )
-    parser.add_argument('--ignore_both', "-b", help="Ignore chars in --ignore both for Hypotheses AND References.", default=False, action="store_true" )
+    parser.add_argument('--testfile',     "-t", help="The test file in dictionary format. 1 word, 1 pronunciation per line, separated by '\\t'.", required=True )
+    parser.add_argument('--prefix',       "-p", help="Prefix used to generate the wordlist, hypothesis and reference files.  Defaults to 'test'.", required=False )
+    parser.add_argument('--modelfile',    "-m", help="Path to the phoneticizer model.", required=True )
+    parser.add_argument('--mbrdecode',    "-e", help="Use the LMBR decoder.", default=False, action="store_true" )
+    parser.add_argument('--alpha',        "-a", help="Alpha for the mbr decoder.", default=.65, type=float )
+    parser.add_argument('--order',        "-o", help="N-gram order for the mbr decoder.", default=6, type=int )
+    parser.add_argument('--precision',    "-x", help="Avg. N-gram precision factor for LMBR decoder. (.85)", default=.85, type=float )
+    parser.add_argument('--ratio',        "-y", help="N-gram ratio factor for LMBR decoder. (.72)", default=.72, type=float )
+    parser.add_argument('--ignore',       "-i", help="Ignore ' ' separated chars in list. Applied only to Hypothesis by default. (false)", required=False, default="" )
+    parser.add_argument('--ignore_both',  "-b", help="Ignore chars in --ignore both for Hypotheses AND References. (false)", default=False, action="store_true" )
     parser.add_argument('--regex_ignore', "-r", help="Ignore chars in the regex.  Applied only to Hypotheses by default.", required=False, default="" )
-    parser.add_argument('--verbose',   "-v", help='Verbose mode.', default=False, action="store_true")
+    parser.add_argument('--verbose',      "-v", help='Verbose mode.', default=False, action="store_true")
     args = parser.parse_args()
+
+    if args.mbrdecode==False:
+        args.mbrdecode=""
+    else:
+        args.mbrdecode="--mbr"
 
     if args.verbose:
         for attr, value in args.__dict__.iteritems():
@@ -99,5 +109,5 @@ if __name__=="__main__":
         args.modelfile, wordlist, ref_file, 
         hyp_file, verbose=args.verbose, ignore=args.ignore, 
         ignore_both=args.ignore_both, regex_ignore=args.regex_ignore,
-        mbrdecode=args.mbrdecode, alpha=args.alpha, theta=args.theta, order=args.order 
+        mbrdecode=args.mbrdecode, alpha=args.alpha, precision=args.precision, ratio=args.ratio, order=args.order 
         ) 
