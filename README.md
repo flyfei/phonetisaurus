@@ -37,7 +37,14 @@ Phonetisaurus G2P
     $ ../phonetisaurus-align --input=../data/g014a2.train.bsf --ofile=g014a2/g014a2.corpus
 
 #### model building ####
+    OLD:
     $ ./train-model.py --dict ../data/g014a2.train.bsf --prefix g014a2/g014a2 --noalign --palign --order 7
+
+    NEW: 
+      - Call your LM trainer directly
+      - Then just convert it with the C++ tool (easier, less python scripting, more flexible - less tested...)
+    $ estimate-ngram -s FixKN -o 7 -t g014a2/g014a2.corpus -wl g014a2/g014a2.arpa
+    $ ../phonetisaurus-arpa2fst --input=g014a2/g014a2.arpa --prefix="g014a2/g014a2"
 
 ### Basic evaluation ###
     $ ./evaluate.py --modelfile g014a2/g014a2.fst --testfile ../data/g014a2.test.tabbed.bsf --prefix g014a2/g014a2

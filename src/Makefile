@@ -26,16 +26,16 @@
 # STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) 
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED 
 # OF THE POSSIBILITY OF SUCH DAMAGE.
-CC=g++ -O2
+CC=g++
 LIBS=-lfst -ldl -lm
-OUT=phonetisaurus-g2p phonetisaurus-align
+OUT=../phonetisaurus-g2p ../phonetisaurus-align ../phonetisaurus-arpa2fst
 TMP=*.o
-EXTRA= #add any -I -L modifications here...
+EXTRA=-O2
 
-POBJS=Phonetisaurus.o FstPathFinder.o MBRDecoder.o
-MOBJS=M2MFstAligner.o FstPathFinder.o MBRDecoder.o
+POBJS=Phonetisaurus.o FstPathFinder.o MBRDecoder.o 
+MOBJS=M2MFstAligner.o FstPathFinder.o MBRDecoder.o 
 
-all: phonetisaurus-g2p phonetisaurus-align
+all: phonetisaurus-g2p phonetisaurus-align phonetisaurus-arpa2fst
 
 Phonetisaurus.o: Phonetisaurus.cpp
 	$(CC) $(EXTRA) Phonetisaurus.cpp -c -o Phonetisaurus.o
@@ -46,6 +46,9 @@ MBRDecoder.o: MBRDecoder.cpp
 FstPathFinder.o: FstPathFinder.cpp
 	$(CC) $(EXTRA) FstPathFinder.cpp -c -o FstPathFinder.o
 
+Arpa2Fst.o: Arpa2Fst.cpp
+	$(CC) $(EXTRA) Arpa2Fst.cpp -c -o Arpa2Fst.o
+
 M2MFstAligner.o: M2MFstAligner.cpp
 	$(CC) $(EXTRA) M2MFstAligner.cpp -c -o M2MFstAligner.o
 
@@ -54,6 +57,9 @@ phonetisaurus-align: FstPathFinder.o M2MFstAligner.o phonetisaurus-align.cpp
 
 phonetisaurus-g2p: FstPathFinder.o Phonetisaurus.o MBRDecoder.o phonetisaurus-g2p.cpp
 	$(CC) $(EXTRA) $(POBJS) phonetisaurus-g2p.cpp -o ../phonetisaurus-g2p $(LIBS)
+
+phonetisaurus-arpa2fst: Arpa2Fst.o phonetisaurus-arpa2fst.cpp
+	$(CC) $(EXTRA) Arpa2Fst.o phonetisaurus-arpa2fst.cpp -o ../phonetisaurus-arpa2fst $(LIBS)
 
 clean:
 	rm $(OUT) $(TMP)
