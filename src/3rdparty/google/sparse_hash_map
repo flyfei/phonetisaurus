@@ -85,15 +85,15 @@
 #ifndef _SPARSE_HASH_MAP_H_
 #define _SPARSE_HASH_MAP_H_
 
-#include <google/sparsehash/sparseconfig.h>
+#include "sparsehash/sparseconfig.h"
 #include <stdio.h>                   // for FILE * in read()/write()
 #include <algorithm>                 // for the default template args
 #include <functional>                // for equal_to
 #include <memory>                    // for alloc<>
 #include <utility>                   // for pair<>
 #include HASH_FUN_H                  // defined in config.h
-#include <google/sparsehash/libc_allocator_with_realloc.h>
-#include <google/sparsehash/sparsehashtable.h>
+#include "sparsehash/libc_allocator_with_realloc.h"
+#include "sparsehash/sparsehashtable.h"
 
 
 _START_GOOGLE_NAMESPACE_

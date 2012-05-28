@@ -106,15 +106,15 @@
 // Quadratic probing
 #define JUMP_(key, num_probes)    ( num_probes )
 
-#include <google/sparsehash/sparseconfig.h>
+#include "sparseconfig.h"
 #include <assert.h>
 #include <algorithm>              // For swap(), eg
 #include <stdexcept>              // For length_error
 #include <iterator>               // for facts about iterator tags
 #include <limits>                 // for numeric_limits<>
 #include <utility>                // for pair<>
-#include <google/sparsehash/hashtable-common.h>
-#include <google/sparsetable>     // Since that's basically what we are
+#include "hashtable-common.h"
+#include "../sparsetable"     // Since that's basically what we are
 
 _START_GOOGLE_NAMESPACE_
 

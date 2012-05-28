@@ -97,7 +97,7 @@
 #define JUMP_(key, num_probes)    ( num_probes )
 
 
-#include <google/sparsehash/sparseconfig.h>
+#include "sparseconfig.h"
 #include <stdio.h>
 #include <assert.h>
 #include <stdlib.h>             // for abort()
@@ -108,9 +108,9 @@
 #include <utility>              // for pair<>
 #include <iterator>             // for facts about iterator tags
 #include <limits>               // for numeric_limits<>
-#include <google/sparsehash/libc_allocator_with_realloc.h>
-#include <google/sparsehash/hashtable-common.h>
-#include <google/type_traits.h> // for true_type, integral_constant, etc.
+#include "libc_allocator_with_realloc.h"
+#include "hashtable-common.h"
+#include "../type_traits.h" // for true_type, integral_constant, etc.
 
 _START_GOOGLE_NAMESPACE_
 
