@@ -1,6 +1,19 @@
 # README #
-Josef Robert Novak - 2012-05-23
+Josef Robert Novak - 2012-07-20
 Phonetisaurus G2P
+
+This distribution has been specially compiled for the FSMNLP 2012 tutorial.
+
+Please see the related wiki page for details:
+
+http://code.google.com/p/phonetisaurus/wiki/FSMNLPTutorial
+
+
+
+
+
+
+
 
 ## Introduction to WFST-based LMBR decoding for G2P ##
 [phonetisaurus-lmbr-g2p.pdf](http://phonetisaurus.googlecode.com/files/phonetisaurus-lmbr-g2p.pdf)
@@ -135,3 +148,49 @@ for integration with the RNNLM toolkit has slightly different requirements.
 See the repository downloads section:
 
 [g2prnn.tgz](http://phonetisaurus.googlecode.com/files/g2p2rnn.tgz)
+
+
+--------------------------------
+FstPathFinder license info: 
+The original FstPathFinder class was written by Chris Taylor as part of another project.
+I (JRN) modified this nice project to return a list of hypothesis-cost pairs and included it in Phonetisaurus.
+His README is included below for the sake of completeness.
+
+README
+
+OpenFst Tools
+
+	This is a collection of useful tools put together for use with the OpenFst (http://www.openfst.org) toolkit.
+	The collection contains some code found on the OpenFst forum. Currently considering offering additional tools found in lextools.
+	Where the forum provided information, a link to said forum article is provided.
+
+License
+
+	This code was licensed under the Apache license that OpenFst is released under.
+
+Dependencies
+
+	Assumptions:
+		I assume you're building with gcc/g++.
+	Deps:
+		libdl and libfst
+
+	libdl should be installed already, if it's not, install your OS "developer" packages
+	libfst is the OpenFst library, you can get it at http://www.openfst.org
+
+Build Instuctions
+
+	Edit the Makefile variable EXTRA to match your system configuration. This means you'll have to add any custom 
+	-I and -L flags so gcc/g++ know where to find the proper include and library files.
+
+Contact
+
+	If you have any recommendations, ideas, or comments, please feel free to contact the google code page related to this collection.
+
+	Chris Taylor
+	http://code.google.com/p/openfst-tools/
+
+Thanks
+
+	The OpenFst team and user community
+

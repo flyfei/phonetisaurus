@@ -106,7 +106,7 @@ DEFINE_double( thresh,      1e-10,  "Delta threshold for EM training termination
 DEFINE_int32(  nbest,           1,  "Output the N-best alignments given the model." );
 DEFINE_string( s1_char_delim,  "",  "Sequence one input delimeter." );
 DEFINE_string( s2_char_delim, " ",  "Sequence two input delimeter." );
-
+DEFINE_bool(   lattice,     false,  "Write out the alignment lattices as an fst archive (.far)." );
 
 int main( int argc, char* argv[] ){
   string usage = "phonetisaurus-align dictionary aligner.\n\n Usage: ";
@@ -134,6 +134,8 @@ int main( int argc, char* argv[] ){
   aligner.maximization(true);
 
   write_alignments( &aligner, FLAGS_ofile, FLAGS_nbest );
+  if( FLAGS_lattice==true )
+    aligner.write_lattice( "test" );
 
   return 1;
 }

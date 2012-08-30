@@ -31,6 +31,7 @@
  OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 #include <fst/fstlib.h>
+#include <fst/extensions/far/far.h>
 #include <vector>
 #include "FstPathFinder.hpp"
 using namespace std;

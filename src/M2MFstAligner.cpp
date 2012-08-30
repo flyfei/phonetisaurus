@@ -515,6 +515,49 @@ vector<PathData> M2MFstAligner::write_alignment_wrapper( int i, int nbest ){
 }
 
 void M2MFstAligner::write_lattice( string lattice ){
+
+  const string far_ofname = "auto.far";
+  FarWriter<StdArc> *far_writer = FarWriter<StdArc>::Create( far_ofname, FAR_DEFAULT );
+
+  for( int i=0; i<fsas.size(); ++i ){
+    //Normalize the weights first. 
+    //Push( &fsas[i], REWEIGHT_TO_INITIAL );
+    VectorFst<LogArc>* _fsa = new VectorFst<LogArc>();
+    cout << "pushed fsa: " << i << endl;
+    Push<LogArc, REWEIGHT_TO_FINAL>(fsas[i], _fsa, kPushWeights);
+
+    //Push( &fsas[i], REWEIGHT_TO_FINAL );
+    for( StateIterator<VectorFst<LogArc> > siter(*_fsa); !siter.Done(); siter.Next() ){
+      size_t i = siter.Value();
+      if( _fsa->Final(i)!=LogArc::Weight::Zero() ){
+	_fsa->SetFinal(i,LogArc::Weight::One() );
+      }
+    }
+    VectorFst<StdArc> stdfst;
+    Map( *_fsa, &stdfst, LogToStdMapper() );
+    //Now add it to the fst archive
+    if( i==0 ){
+      stdfst.SetInputSymbols(isyms);
+      stdfst.SetOutputSymbols(isyms);
+    }
+    far_writer->Add("a", stdfst);
+  }
+
+  //That's it, now clean up.
+  delete far_writer;
+
+  return;
+}
+/////////////////////////////////////////////////////////
+/*  
+    This is now obsolete.  We can just compile the 
+    n-best alignments or whole lattices into a .far
+    fst archive object!  The NGramLibrary tools can 
+    then train up a fractional KN model directly from
+    the .far file.  This is THE way to go. Plus it saves
+    me the pain of having to do this myself.
+
+void M2MFstAligner::write_lattice( string lattice ){
   //Write out the entire training set in lattice format
   //Perform the union first.  This output can then 
   // be plugged directly in to a counter to obtain expected
@@ -559,3 +602,5 @@ void M2MFstAligner::write_lattice( string lattice ){
   isyms->WriteText("lattice.syms");
   return;
 }
+*/
+//////////////////////////////////////////////
