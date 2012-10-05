@@ -156,13 +156,14 @@ void MBRDecoder::_alpha_normalize( VectorFst<LogArc>* _lattice ){
   }
 
   Push<LogArc, REWEIGHT_TO_FINAL>(*_lattice, lattice, kPushWeights);
-
+  
   for( StateIterator<VectorFst<LogArc> > siter(*lattice); !siter.Done(); siter.Next() ){
     size_t i = siter.Value();
     if( lattice->Final(i)!=LogArc::Weight::Zero() ){
       lattice->SetFinal(i,LogArc::Weight::One());
     }
   }
+
   return;
 }
 

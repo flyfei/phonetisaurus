@@ -31,16 +31,25 @@
 #include "3rdparty/utf8.h"
 using namespace fst;
 
-void split_string( string* input, vector<string>* tokens, string* delim ){
-  //Standard C++ string splitter found all over the web.                                                          
-  istringstream iss(*input);
-  string token;
-  while( getline(iss, token, *delim->c_str()) )
-    tokens->push_back(token);
-  return;
+
+
+inline string vec2str( vector<string> vec, string sep ){
+  string ss;
+  for(size_t i = 0; i < vec.size(); ++i){
+    if(i != 0)
+      ss += sep;
+    ss += vec[i];
+  }
+  return ss;
 }
 
-vector<string> tokenize_utf8_string( string* utf8_string, string* delimiter ) {
+inline string itoas( int i ){
+  std::stringstream ostring;
+  ostring << i;
+  return ostring.str();
+}
+
+inline vector<string> tokenize_utf8_string( string* utf8_string, string* delimiter ) {
   /*
      Support for tokenizing a utf-8 string. Adapted to also support a delimiter.
      Note that leading, trailing or multiple consecutive delimiters will result in 
@@ -51,9 +60,9 @@ vector<string> tokenize_utf8_string( string* utf8_string, string* delimiter ) {
      http://stackoverflow.com/questions/2852895/c-iterate-or-split-utf-8-string-into-array-of-symbols#2856241
   */
   char* str   = (char*)utf8_string->c_str(); // utf-8 string
-  char* str_i = str;                        // string iterator
+  char* str_i = str;                         // string iterator
   char* str_j = str;
-  char* end   = str+strlen(str)+1;          // end iterator
+  char* end   = str+strlen(str)+1;           // end iterator
   vector<string> string_vec;
   if( delimiter->compare("") != 0 )
     string_vec.push_back("");
@@ -80,7 +89,8 @@ vector<string> tokenize_utf8_string( string* utf8_string, string* delimiter ) {
   return string_vec;
 }
 
-vector<string> tokenize_entry( string* testword, string* sep, SymbolTable* syms ){
+
+inline vector<string> tokenize_entry( string* testword, string* sep, SymbolTable* syms ){
   vector<string> tokens = tokenize_utf8_string( testword, sep );
   vector<string> entry;
   for( int i=0; i<tokens.size(); i++ ){
@@ -95,3 +105,4 @@ vector<string> tokenize_entry( string* testword, string* sep, SymbolTable* syms 
 
   return entry;
 }
+

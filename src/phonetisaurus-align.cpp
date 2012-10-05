@@ -30,7 +30,6 @@
 *
 */
 #include "M2MFstAligner.hpp"
-#include "util.hpp"
 using namespace fst;
 
 
@@ -44,14 +43,14 @@ void load_input_file( M2MFstAligner* aligner, string input_file, string delim, s
       getline(infile, line);
       if( line.empty() )
         continue;
-      vector<string> tokens;
-      split_string( &line, &tokens, &delim );
-      vector<string> seq1 = tokenize_utf8_string( &tokens.at(0), &s1_char_delim );
-      vector<string> seq2 = tokenize_utf8_string( &tokens.at(1), &s2_char_delim );
+      vector<string> tokens = tokenize_utf8_string( &line, &delim );
+      vector<string> seq1   = tokenize_utf8_string( &tokens.at(0), &s1_char_delim );
+      vector<string> seq2   = tokenize_utf8_string( &tokens.at(1), &s2_char_delim );
       aligner->entry2alignfst( seq1, seq2 );
     }
     infile.close();
   }
+  aligner->computePenalties( );
 
   return;
 }
@@ -85,6 +84,90 @@ void write_alignments( M2MFstAligner* aligner, string ofile_name, int nbest ){
   return;
 }
 
+void compileNBestFarArchive( M2MFstAligner* aligner, vector<VectorFst<LogArc> > *fsts, string far_name, int nbest, StdArc::Weight threshold ){
+  /*
+    Generic method for compiling an FstARchive from a vector of FST lattices.
+    The 'nbest' and 'threshold' parameters may be used to heuristically prune
+    the individual input lattices.  
+  */
+
+  //Book-keeping stuff
+  string key_prefix = "";
+  string key_suffix = "";
+  string key        = "";
+  char   keybuf[16];
+  int32  generate_keys = 7; //Suitable for up to several million lattices
+
+  //Build us a FarWriter to compile the archive
+  FarWriter<StdArc> *far_writer = FarWriter<StdArc>::Create(far_name, FAR_DEFAULT);
+
+  for( int i=0; i < fsts->size(); i++ ){
+    //There has got to be a more efficient way to do this!
+    VectorFst<StdArc>* tfst = new VectorFst<StdArc>();
+    VectorFst<LogArc>* lfst = new VectorFst<LogArc>();
+    VectorFst<StdArc>* ifst = new VectorFst<StdArc>();
+    VectorFst<StdArc>* sfst = new VectorFst<StdArc>();
+    VectorFst<LogArc>* pfst = new VectorFst<LogArc>();
+    VectorFst<StdArc>* ffst = new VectorFst<StdArc>();
+
+    //Map to the Tropical semiring
+    Map(fsts->at(i), tfst, LogToStdMapper());
+
+    //Penalize the arcs
+    for( StateIterator<VectorFst<StdArc> > siter(*tfst); !siter.Done(); siter.Next() ){
+      StdArc::StateId q = siter.Value();
+      for( MutableArcIterator<VectorFst<StdArc> > aiter( tfst, q); !aiter.Done(); aiter.Next() ){
+	StdArc arc = aiter.Value();
+	LabelDatum* ld = &aligner->penalties[arc.ilabel];
+	if( ld->lhs>1 && ld->rhs>1 )
+	  arc.weight = 999; 
+	else
+	  arc.weight = aligner->alignment_model[arc.ilabel].Value() * ld->max;
+
+	if( arc.weight == LogWeight::Zero() )
+	  arc.weight = 999;
+	if( arc.weight != arc.weight )
+	  arc.weight = 999;
+	aiter.SetValue(arc);
+      }
+    }
+
+    //Prune arcs and states based on a threshold value
+    if( threshold.Value() != LogWeight::Zero() )
+      Prune( tfst, threshold );
+
+    //Extract the N-best shortest paths from the possibly pruned lattice
+    ShortestPath( *tfst, sfst, nbest );
+
+    //Map back to the Log semiring
+    Map(*sfst, lfst, StdToLogMapper());
+
+    //Perform posterior normalization of the N-best lattice by pushing weights 
+    // in the log semiring and then removing the final weight.
+    Push<LogArc, REWEIGHT_TO_FINAL>(*lfst, pfst, kPushWeights);
+    for( StateIterator<VectorFst<LogArc> > siter(*pfst); !siter.Done(); siter.Next() ){
+      size_t i = siter.Value();
+      if( pfst->Final(i)!=LogArc::Weight::Zero() ){
+        pfst->SetFinal(i,LogArc::Weight::One());
+      }
+    }
+
+    //Finally map back to the Tropical semiring for the last time
+    Map(*pfst, ffst, LogToStdMapper());
+
+    sprintf(keybuf, "%0*d", generate_keys, i+1);
+    key = keybuf;
+    //Write the final result to the FARchive
+    far_writer->Add(key_prefix + key + key_suffix, *ffst);
+    //Cleanup the temporary FSTs
+    delete lfst, tfst, ifst, sfst, pfst, ffst;
+  }
+  //Cleanup the archive writer
+  delete far_writer;
+
+  return;
+}
+
 
 DEFINE_string( input,          "",  "Two-column input file to align." );
 DEFINE_bool(   seq1_del,     true,  "Allow deletions in sequence one." );
@@ -104,8 +187,10 @@ DEFINE_bool(   mbr,         false,  "Use the LMBR decoder (not yet implemented).
 DEFINE_int32(  iter,           11,  "Maximum number of EM iterations to perform." );
 DEFINE_double( thresh,      1e-10,  "Delta threshold for EM training termination." ); 
 DEFINE_int32(  nbest,           1,  "Output the N-best alignments given the model." );
+DEFINE_double( pthresh,       -99,  "Pruning threshold.  Use to prune unlikely N-best candidates when using multiple alignments.");
 DEFINE_string( s1_char_delim,  "",  "Sequence one input delimeter." );
 DEFINE_string( s2_char_delim, " ",  "Sequence two input delimeter." );
+DEFINE_string( far_name,  "t.far",  "Name of the far archive, if using multiple alignments." );
 DEFINE_bool(   lattice,     false,  "Write out the alignment lattices as an fst archive (.far)." );
 
 int main( int argc, char* argv[] ){
@@ -129,13 +214,18 @@ int main( int argc, char* argv[] ){
     aligner.expectation();
     cerr << aligner.maximization(false) << endl;
   }
+
   cerr << "Last iteration: " << endl;
   aligner.expectation();
   aligner.maximization(true);
 
-  write_alignments( &aligner, FLAGS_ofile, FLAGS_nbest );
+  StdArc::Weight pthresh = FLAGS_pthresh==-99.0 ? LogWeight::Zero().Value() : FLAGS_pthresh;
+  aligner.fsas[0].SetInputSymbols(aligner.isyms);
+  aligner.fsas[0].SetOutputSymbols(aligner.isyms);
   if( FLAGS_lattice==true )
-    aligner.write_lattice( "test" );
+    compileNBestFarArchive( &aligner, &aligner.fsas, FLAGS_far_name, FLAGS_nbest, pthresh );
+  else
+    write_alignments( &aligner, FLAGS_ofile, FLAGS_nbest );
 
   return 1;
 }

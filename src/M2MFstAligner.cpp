@@ -29,63 +29,8 @@
  OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  */
-#include <fst/fstlib.h>
-#include <iostream>
-#include <set>
 #include "M2MFstAligner.hpp"
 
-//Begin Utility functions (these really need to go somewhere else
-vector<string> &split(const string &s, string delim, vector<string> &elems) {
-  stringstream ss(s);
-  string item;
-  //delim.c_str()[0] is a VERY bad thing to do
-  // this will produce behavior that makes not sense
-  // to the user if they try to use a multi-char delimiter
-  //Actually, this is inexcusable but first things first let's
-  // get everything else working properly.
-  while(getline(ss, item, delim.c_str()[0])) {
-    elems.push_back(item);
-  }
-  return elems;
-}
-
-
-vector<string> split(const string &s, string delim) {
-  vector<string> elems;
-  return split(s, delim, elems);
-}
-
-
-string vec2str( vector<string> vec, string sep ){
-  string ss;
-  for(size_t i = 0; i < vec.size(); ++i){
-    if(i != 0)
-      ss += sep;
-    ss += vec[i];
-  }
-  return ss;
-}
-
-string itoas( int i ){
-  std::stringstream ostring;
-  ostring << i;
-  return ostring.str();
-}
-
-int M2MFstAligner::get_max_length( string joint_label ){
-  //We can probably make this a LOT faster...
-  vector<string> parts = split( joint_label, s1s2_sep );
-  vector<string> s1 = split( parts[0], seq1_sep );
-  vector<string> s2 = split( parts[1], seq2_sep );
-  int m = max(s1.size(),s2.size());
-  //Probably want to rethink this placement..
-  //At this point the model should not contain any of these
-  // transitions anyway.  So this is redundant...
-  if( s1.size()>1 && s2.size()>1 )
-    m = -1;
-  return m;
-}
-//End utility functions
 
 
 M2MFstAligner::M2MFstAligner( ){
@@ -104,7 +49,7 @@ M2MFstAligner::M2MFstAligner( bool _seq1_del, bool _seq2_del, int _seq1_max, int
   seq1_sep = _seq1_sep;
   seq2_sep = _seq2_sep;
   s1s2_sep = _s1s2_sep;
-  penalize  = _penalize;
+  penalize = _penalize;
   eps      = _eps;
   skip     = _skip;
   skipSeqs.insert(eps);
@@ -126,9 +71,15 @@ M2MFstAligner::M2MFstAligner( bool _seq1_del, bool _seq2_del, int _seq1_max, int
   isyms->AddSymbol( model_params );
   total     = LogWeight::Zero();
   prevTotal = LogWeight::Zero();
+  penalties.set_empty_key(NULL);
 }
 
 M2MFstAligner::M2MFstAligner( string _model_file ){
+  /*
+    Initialize the aligner with a previously trained model.
+    The model requires that the first several symbols in the 
+    symbols table contain the separator and other bookkeeping info.
+  */
   VectorFst<LogArc>* model = VectorFst<LogArc>::Read( _model_file );
   for( StateIterator<VectorFst<LogArc> > siter(*model); !siter.Done(); siter.Next() ){
     LogArc::StateId q = siter.Value();
@@ -141,11 +92,16 @@ M2MFstAligner::M2MFstAligner( string _model_file ){
   int i = 0;
   eps      = isyms->Find(i);//Can't write '0' here for some reason...
   skip     = isyms->Find(1);
-  vector<string> seps = split( isyms->Find(2), "_" );
+  string tie = "_"; //tie to pack parameters
+
+  string sseps = isyms->Find(2);
+  vector<string> seps = tokenize_utf8_string( &sseps, &tie );
   seq1_sep = seps[0];
   seq2_sep = seps[1];
   s1s2_sep = isyms->Find(3);
-  vector<string> params = split( isyms->Find(4), "_" );
+
+  string sparams = isyms->Find(4);
+  vector<string> params = tokenize_utf8_string( &sparams, &tie );
   seq1_del = params[0].compare("true") ? false : true;
   seq2_del = params[1].compare("true") ? false : true;
   seq1_max = atoi(params[2].c_str());
@@ -154,6 +110,9 @@ M2MFstAligner::M2MFstAligner( string _model_file ){
 }
 
 void M2MFstAligner::write_model( string _model_file ){
+  /*
+    Write the alignment model to disk using a single-state WFSA.
+  */
   VectorFst<LogArc> model;
   model.AddState();
   model.SetStart(0);
@@ -167,6 +126,10 @@ void M2MFstAligner::write_model( string _model_file ){
 }
 
 void M2MFstAligner::expectation( ){
+  /*
+    Here we compute the arc posteriors.  This routine is almost 
+    fun to implement in the FST paradigm.
+  */
   for( int i=0; i<fsas.size(); i++ ){
     //Comput Forward and Backward probabilities
     ShortestDistance( fsas.at(i), &alpha );
@@ -178,7 +141,7 @@ void M2MFstAligner::expectation( ){
       LogArc::StateId q = siter.Value();
       for( ArcIterator<VectorFst<LogArc> > aiter(fsas.at(i),q); !aiter.Done(); aiter.Next() ){
 	const LogArc&      arc = aiter.Value();
-	const LogWeight& gamma = Divide(Times(Times(alpha[q], arc.weight), beta[arc.nextstate]), beta[0]);
+	const LogWeight& gamma = Divide(Times(Times(alpha[q], arc.weight), beta[arc.nextstate]), beta[0]); 
 	//Check for any BadValue results, otherwise add to the tally.
         //We call this 'prev_alignment_model' which may seem misleading, but
         // this conventions leads to 'alignment_model' being the final version.
@@ -192,6 +155,42 @@ void M2MFstAligner::expectation( ){
     beta.clear();
   }
 }
+
+
+float M2MFstAligner::maximization( bool lastiter ){
+  //Maximization. Standard approach is simple count normalization.  
+  //The 'penalize' option penalizes links by total length.  Results seem to be inconclusive.
+  //  Probably get an improvement by distinguishing between gaps and insertions, etc.
+  map<LogArc::Label,LogWeight>::iterator it;
+  float change = abs(total.Value()-prevTotal.Value());
+  //cout << "Total: " << total << " Change: " << abs(total.Value()-prevTotal.Value()) << endl;
+  prevTotal = total;
+
+  //Normalize and iterate to the next model.  We apply it dynamically 
+  // during the expectation step.
+  for( it=prev_alignment_model.begin(); it != prev_alignment_model.end(); it++ ){
+    alignment_model[(*it).first] = Divide((*it).second,total);
+    (*it).second = LogWeight::Zero();
+  }
+
+  for( int i=0; i<fsas.size(); i++ ){
+    for( StateIterator<VectorFst<LogArc> > siter(fsas[i]); !siter.Done(); siter.Next() ){
+      LogArc::StateId q = siter.Value();
+      for( MutableArcIterator<VectorFst<LogArc> > aiter(&fsas[i], q); !aiter.Done(); aiter.Next() ){
+	LogArc arc = aiter.Value();
+	if( penalize==true )
+	  arc.weight = alignment_model[arc.ilabel].Value() * penalties[arc.ilabel].tot;
+	else
+	  arc.weight = alignment_model[arc.ilabel];
+	aiter.SetValue(arc);
+      }
+    }
+  }
+
+  total = LogWeight::Zero();
+  return change;
+}
+
 
 void M2MFstAligner::Sequences2FST( VectorFst<LogArc>* fst, vector<string>* seq1, vector<string>* seq2 ){
   /*
@@ -261,8 +260,9 @@ void M2MFstAligner::Sequences2FST( VectorFst<LogArc>* fst, vector<string>* seq1,
 	    string s1 = vec2str(subseq1, seq1_sep);
 	    vector<string> subseq2( seq2->begin()+j, seq2->begin()+j+l );
 	    string s2 = vec2str(subseq2, seq2_sep);
-	    if( l>1 && k>1)
-	      continue;
+	    //This says only 1-M and N-1 allowed, no M-N links!
+	    //if( l>1 && k>1)
+	    //  continue;
 	    int is = isyms->AddSymbol(s1+s1s2_sep+s2);
 	    ostate = (i+k)*(seq2->size()+1) + (j+l);
 	    LogArc arc( is, is, LogWeight::One().Value()*(k+l), ostate );
@@ -287,11 +287,8 @@ void M2MFstAligner::Sequences2FST( VectorFst<LogArc>* fst, vector<string>* seq1,
   fst->SetFinal( ((seq1->size()+1)*(seq2->size()+1))-1, LogWeight::One() );
   //Unless seq1_del==true && seq2_del==true we will have unconnected states
   // thus we need to run connect to clean out these states
-  //fst->SetInputSymbols(isyms);
-  //fst->Write("right.nc.fsa");
   if( seq1_del==false or seq2_del==false )
     Connect(fst);
-  //fst->Write("right.c.fsa");
   return;
 }
 
@@ -302,9 +299,6 @@ void M2MFstAligner::Sequences2FSTNoInit( VectorFst<LogArc>* fst, vector<string>*
      creating a WFSA.  This simplifies the training process, but means that we can only 
      easily compute a joint maximization.  In practice joint maximization seems to give the 
      best results anyway, so it probably doesn't matter.
-
-     It might be more appropriate to consider subsequence length here, but for now we stick 
-     to the m2m-aligner approach.
   */
   int istate=0; int ostate=0;
   for( int i=0; i<=seq1->size(); i++ ){
@@ -384,40 +378,6 @@ vector<PathData> M2MFstAligner::entry2alignfstnoinit( vector<string> seq1, vecto
   return write_alignment( fst, nbest );
 }
 
-float M2MFstAligner::maximization( bool lastiter ){
-  //Maximization. Simple count normalization.  Probably get an improvement 
-  // by using a more sophisticated regularization approach. 
-  map<LogArc::Label,LogWeight>::iterator it;
-  float change = abs(total.Value()-prevTotal.Value());
-  //cout << "Total: " << total << " Change: " << abs(total.Value()-prevTotal.Value()) << endl;
-  prevTotal = total;
-
-  //Normalize and iterate to the next model.  We apply it dynamically 
-  // during the expectation step.
-  for( it=prev_alignment_model.begin(); it != prev_alignment_model.end(); it++ ){
-    alignment_model[(*it).first] = Divide((*it).second,total);
-    (*it).second = LogWeight::Zero();
-  }
-
-  for( int i=0; i<fsas.size(); i++ ){
-    for( StateIterator<VectorFst<LogArc> > siter(fsas[i]); !siter.Done(); siter.Next() ){
-      LogArc::StateId q = siter.Value();
-      for( MutableArcIterator<VectorFst<LogArc> > aiter(&fsas[i], q); !aiter.Done(); aiter.Next() ){
-	LogArc arc = aiter.Value();
-	arc.weight = alignment_model[arc.ilabel];
-	aiter.SetValue(arc);
-      }
-    }
-  }
-
-  total = LogWeight::Zero();
-  return change;
-}
-
-int M2MFstAligner::num_fsas( ){
-  //A getter function because I'm retarded.
-  return fsas.size();
-}
 
 vector<PathData> M2MFstAligner::write_alignment( const VectorFst<LogArc>& ifst, int nbest ){
   //Generic alignment generator
@@ -452,23 +412,19 @@ vector<PathData> M2MFstAligner::write_alignment( const VectorFst<LogArc>& ifst, 
       //  Oh baby.  Can't wait to for everyone to see the paper!
       //NOTE: this is going to fail if we encounter any alignments in a new test item that never
       // occurred in the original model.
-      StdArc arc = aiter.Value();
-      int maxl = get_max_length( isyms->Find(arc.ilabel) );
-      if( maxl==-1 ){
+      StdArc     arc = aiter.Value();
+      LabelDatum* ld = &penalties[arc.ilabel];
+
+      if( ld->lhs>1 && ld->rhs>1 ){
         arc.weight = 999; 
       }else{
-	//Optionally penalize m-to-1 / 1-to-m links.  This produces 
+	//Penalize m-to-1 / 1-to-m links.  This produces 
 	// WORSE 1-best alignments, but results in better joint n-gram 
 	// models for small training corpora when using only the 1-best
 	// alignment.  By further favoring 1-to-1 alignments the 1-best
 	// alignment corpus results in a more flexible joint n-gram model
 	// with regard to previously unseen data.  
-	//if( penalize==true ){
-	arc.weight = alignment_model[arc.ilabel].Value() * maxl;
-	//}else{
-	//For larger corpora this is probably unnecessary.
-	//arc.weight = alignment_model[arc.ilabel].Value();
-	//}
+	arc.weight = alignment_model[arc.ilabel].Value() * ld->max;
       }
       if( arc.weight == LogWeight::Zero() )
       	arc.weight = 999;
@@ -501,106 +457,28 @@ vector<PathData> M2MFstAligner::write_alignment( const VectorFst<LogArc>& ifst, 
   return pathfinder.paths;
 }
 
-void M2MFstAligner::write_all_alignments( int nbest ){
-  //Convenience function for the python bindings
-  for( int i=0; i<fsas.size(); i++ )
-    write_alignment( fsas[i], nbest );
-
-  return;
-}
-
-vector<PathData> M2MFstAligner::write_alignment_wrapper( int i, int nbest ){
-  //Wrapper for the python bindings.
-  return write_alignment( fsas[i], nbest );
-}
-
-void M2MFstAligner::write_lattice( string lattice ){
-
-  const string far_ofname = "auto.far";
-  FarWriter<StdArc> *far_writer = FarWriter<StdArc>::Create( far_ofname, FAR_DEFAULT );
-
-  for( int i=0; i<fsas.size(); ++i ){
-    //Normalize the weights first. 
-    //Push( &fsas[i], REWEIGHT_TO_INITIAL );
-    VectorFst<LogArc>* _fsa = new VectorFst<LogArc>();
-    cout << "pushed fsa: " << i << endl;
-    Push<LogArc, REWEIGHT_TO_FINAL>(fsas[i], _fsa, kPushWeights);
-
-    //Push( &fsas[i], REWEIGHT_TO_FINAL );
-    for( StateIterator<VectorFst<LogArc> > siter(*_fsa); !siter.Done(); siter.Next() ){
-      size_t i = siter.Value();
-      if( _fsa->Final(i)!=LogArc::Weight::Zero() ){
-	_fsa->SetFinal(i,LogArc::Weight::One() );
-      }
+void M2MFstAligner::computePenalties( ){
+  /*
+    Precompute exponential penalties for all possible alignment units.
+    Later on this will also be where expert rules are precompiled.
+  */
+  map<LogArc::Label,LogWeight>::iterator it;
+  for( it=prev_alignment_model.begin(); it != prev_alignment_model.end(); it++ ){
+    string ioLabel = isyms->Find((*it).first);
+    vector<string> InOut = tokenize_utf8_string( &ioLabel, &s1s2_sep );
+    if( InOut.size()!=2 ){
+      cerr << "Input: " << ioLabel << " and separator: " << s1s2_sep << " do not yield an input-output label pair!" << endl;
+      cerr << "segfault ahoy!" << endl;
     }
-    VectorFst<StdArc> stdfst;
-    Map( *_fsa, &stdfst, LogToStdMapper() );
-    //Now add it to the fst archive
-    if( i==0 ){
-      stdfst.SetInputSymbols(isyms);
-      stdfst.SetOutputSymbols(isyms);
-    }
-    far_writer->Add("a", stdfst);
+    vector<string> inL   = tokenize_utf8_string( &InOut.at(0), &seq1_sep );    
+    vector<string> outL  = tokenize_utf8_string( &InOut.at(1), &seq2_sep );    
+    LabelDatum ld;
+    ld.lhs  = inL.size(); ld.rhs = outL.size();
+    ld.max  = max(ld.lhs,ld.rhs); ld.tot = ld.lhs+ld.rhs;
+    ld.lhsE = false; ld.rhsE = false;
+    penalties.insert( LabelData::value_type((*it).first, ld) );
   }
-
-  //That's it, now clean up.
-  delete far_writer;
-
+    
   return;
 }
-/////////////////////////////////////////////////////////
-/*  
-    This is now obsolete.  We can just compile the 
-    n-best alignments or whole lattices into a .far
-    fst archive object!  The NGramLibrary tools can 
-    then train up a fractional KN model directly from
-    the .far file.  This is THE way to go. Plus it saves
-    me the pain of having to do this myself.
 
-void M2MFstAligner::write_lattice( string lattice ){
-  //Write out the entire training set in lattice format
-  //Perform the union first.  This output can then 
-  // be plugged directly in to a counter to obtain expected
-  // alignment counts for the EM-trained corpus.  Yields 
-  // far higher-quality joint n-gram models, which are also
-  // more robust for smaller training corpora.
-  //Make sure you call this BEFORE any call to 
-  // write_all_alignments
-  // as the latter function will override some of the weights
-
-  //Chaining the standard Union operation, including using a 
-  // rational FST still performs very poorly in the log semiring.
-  //Presumably it's running push or something at each step.  It
-  // should be fine to do that just once at the end.
-  //Rolling our own union turns out to be MUCH faster.
-  VectorFst<LogArc> ufst;
-  ufst.AddState();
-  ufst.SetStart(0);
-  int total_states = 0;
-  for( int i=0; i<fsas.size(); i++ ){
-    TopSort(&fsas[i]);
-    for( StateIterator<VectorFst<LogArc> > siter(fsas[i]); !siter.Done(); siter.Next() ){
-      LogArc::StateId q = siter.Value();
-      LogArc::StateId r;
-      if( q==0 ) r = 0;
-      else       r = ufst.AddState();
-
-      for( ArcIterator<VectorFst<LogArc> > aiter(fsas[i],q); !aiter.Done(); aiter.Next() ){
-	const LogArc& arc = aiter.Value();
-	ufst.AddArc( r, LogArc( arc.ilabel, arc.ilabel, arc.weight, arc.nextstate+total_states ) );
-      }
-      if( fsas[i].Final(q)!=LogWeight::Zero() )
-	ufst.SetFinal( r, LogWeight::One() );
-    }
-    total_states += fsas[i].NumStates()-1;
-  }
-  //Normalize weights
-  Push( &ufst, REWEIGHT_TO_INITIAL );
-  //Write the resulting lattice to disk
-  ufst.Write(lattice);
-  //Write the syms table too.
-  isyms->WriteText("lattice.syms");
-  return;
-}
-*/
-//////////////////////////////////////////////

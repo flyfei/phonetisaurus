@@ -32,9 +32,13 @@
 */
 #include <fst/fstlib.h>
 #include <fst/extensions/far/far.h>
-#include <vector>
 #include "FstPathFinder.hpp"
+#include "3rdparty/google/dense_hash_map"
+#include "util.hpp"
 using namespace std;
+
+typedef struct LabelDatum { int max, tot, lhs, rhs; bool lhsE, rhsE; };
+typedef google::dense_hash_map<LogArc::Label,LabelDatum> LabelData;
 
 namespace fst{
 class M2MFstAligner {
@@ -79,41 +83,44 @@ public:
   SymbolTable *isyms;
   map<LogArc::Label, LogWeight> alignment_model;
   map<LogArc::Label, LogWeight> prev_alignment_model;
+  LabelData penalties;
   LogWeight total;
   LogWeight prevTotal;
 
   //Constructors
   M2MFstAligner( );
+  //Train from scratch using a dictionary
   M2MFstAligner( bool _seq1_del, bool _seq2_del, int _seq1_max, int _seq2_max, 
 		 string _seq1_sep, string _seq2_sep, string _s1s2_sep,
 		 string _eps, string _skip, bool _penalize );
+  //We've already got a model to go on
   M2MFstAligner( string _model_file );
 
   //Write an aligner model to disk.  Critical info is stored in the 
   // the symbol table so that it can be restored when the model is loaded.
   void write_model( string _model_name );
+
   //Transform a sequence pair into an equivalent multiple-to-multiple FST,
   // encoding all possible alignments between the two sequences
-  void Sequences2FST( VectorFst<LogArc>* fst, vector<string>* seq1, vector<string>* seq2 );
+  void Sequences2FST      ( VectorFst<LogArc>* fst, vector<string>* seq1, vector<string>* seq2 );
   void Sequences2FSTNoInit( VectorFst<LogArc>* fst, vector<string>* seq1, vector<string>* seq2 );
+
   //Initialize all of the training data
   void entry2alignfst( vector<string> seq1, vector<string> seq2 );
   vector<PathData> entry2alignfstnoinit( vector<string> seq1, vector<string> seq2, int nbest, string lattice="" );
-  vector<PathData> write_alignment_wrapper( int i, int nbest );
-  //The expectation routine
+
+  //The expectation routines
   void expectation( );
+
   //The maximization routine.  Returns the change since the last iteration
   float maximization( bool lastiter );
+
   //Print out the EM-optimized alignment for the training data
   vector<PathData> write_alignment( const VectorFst<LogArc>& ifst, int nbest );
-  //Write out the union of the weighted alignment lattices for the training corpus
-  void write_lattice( string lattice );
-  //Convenience function to output all the alignments
-  void write_all_alignments( int nbest );
-  //max routine
-  int get_max_length( string joint_label );
-  int num_fsas( );
-  
+
+  //Precompute the label and subsequence lengths for all possible alignment units
+  //  this helps speedup the penalization and decoding routines.
+  void computePenalties( );
 };
 }
 #endif // M2MFSTALIGNER_H //
