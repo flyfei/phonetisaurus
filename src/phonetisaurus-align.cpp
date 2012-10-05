@@ -89,6 +89,8 @@ void compileNBestFarArchive( M2MFstAligner* aligner, vector<VectorFst<LogArc> > 
     Generic method for compiling an FstARchive from a vector of FST lattices.
     The 'nbest' and 'threshold' parameters may be used to heuristically prune
     the individual input lattices.  
+
+    TODO: Forward-Backward pruning for the lattices for one last variation.
   */
 
   //Book-keeping stuff
