@@ -33,8 +33,6 @@
 #include "util.hpp"
 using namespace fst;
 
-//struct LabelDatum { int max, tot, lhs, rhs; bool lhsE, rhsE; };
-//typedef google::dense_hash_map<LogArc::Label,LabelDatum> LabelData;
 
 string vec2str( vector<string> vec, string sep ){
   string ss;

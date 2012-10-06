@@ -36,8 +36,6 @@
 #include "util.hpp"
 using namespace std;
 
-//typedef struct LabelDatum { int max, tot, lhs, rhs; bool lhsE, rhsE; };
-//typedef google::dense_hash_map<LogArc::Label,LabelDatum> LabelData;
 
 namespace fst{
 class M2MFstAligner {
