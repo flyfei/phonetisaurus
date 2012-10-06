@@ -30,6 +30,8 @@
 *
 */
 #include "M2MFstAligner.hpp"
+#include "LatticePruner.hpp"
+#include "util.hpp"
 using namespace fst;
 
 
@@ -84,7 +86,8 @@ void write_alignments( M2MFstAligner* aligner, string ofile_name, int nbest ){
   return;
 }
 
-void compileNBestFarArchive( M2MFstAligner* aligner, vector<VectorFst<LogArc> > *fsts, string far_name, int nbest, StdArc::Weight threshold ){
+void compileNBestFarArchive( M2MFstAligner* aligner, vector<VectorFst<LogArc> > *fsts, string far_name, 
+			     int nbest, StdArc::Weight threshold, bool fb, bool penalize ){
   /*
     Generic method for compiling an FstARchive from a vector of FST lattices.
     The 'nbest' and 'threshold' parameters may be used to heuristically prune
@@ -102,6 +105,8 @@ void compileNBestFarArchive( M2MFstAligner* aligner, vector<VectorFst<LogArc> > 
 
   //Build us a FarWriter to compile the archive
   FarWriter<StdArc> *far_writer = FarWriter<StdArc>::Create(far_name, FAR_DEFAULT);
+  //Build us a lattice pruner
+  LatticePruner pruner( aligner->penalties, threshold, nbest, fb, penalize );
 
   for( int i=0; i < fsts->size(); i++ ){
     //There has got to be a more efficient way to do this!
@@ -114,25 +119,11 @@ void compileNBestFarArchive( M2MFstAligner* aligner, vector<VectorFst<LogArc> > 
 
     //Map to the Tropical semiring
     Map(fsts->at(i), tfst, LogToStdMapper());
+    pruner.prune_fst( tfst );
 
+    /*
     //Penalize the arcs
-    for( StateIterator<VectorFst<StdArc> > siter(*tfst); !siter.Done(); siter.Next() ){
-      StdArc::StateId q = siter.Value();
-      for( MutableArcIterator<VectorFst<StdArc> > aiter( tfst, q); !aiter.Done(); aiter.Next() ){
-	StdArc arc = aiter.Value();
-	LabelDatum* ld = &aligner->penalties[arc.ilabel];
-	if( ld->lhs>1 && ld->rhs>1 )
-	  arc.weight = 999; 
-	else
-	  arc.weight = aligner->alignment_model[arc.ilabel].Value() * ld->max;
-
-	if( arc.weight == LogWeight::Zero() )
-	  arc.weight = 999;
-	if( arc.weight != arc.weight )
-	  arc.weight = 999;
-	aiter.SetValue(arc);
-      }
-    }
+    aligner->_penalize_arcs( tfst );
 
     //Prune arcs and states based on a threshold value
     if( threshold.Value() != LogWeight::Zero() )
@@ -140,9 +131,10 @@ void compileNBestFarArchive( M2MFstAligner* aligner, vector<VectorFst<LogArc> > 
 
     //Extract the N-best shortest paths from the possibly pruned lattice
     ShortestPath( *tfst, sfst, nbest );
+    */
 
     //Map back to the Log semiring
-    Map(*sfst, lfst, StdToLogMapper());
+    Map(*tfst, lfst, StdToLogMapper());
 
     //Perform posterior normalization of the N-best lattice by pushing weights 
     // in the log semiring and then removing the final weight.
@@ -186,6 +178,7 @@ DEFINE_bool(   penalize,     true,  "Penalize scores." );
 DEFINE_bool(   model,          "",  "Load a pre-trained model for use." );
 DEFINE_string( ofile,          "",  "Output file to write the aligned dictionary to." );
 DEFINE_bool(   mbr,         false,  "Use the LMBR decoder (not yet implemented)." );
+DEFINE_bool(   fb,          false,  "Use forward-backward pruning for the alignment lattices." );
 DEFINE_int32(  iter,           11,  "Maximum number of EM iterations to perform." );
 DEFINE_double( thresh,      1e-10,  "Delta threshold for EM training termination." ); 
 DEFINE_int32(  nbest,           1,  "Output the N-best alignments given the model." );
@@ -225,7 +218,7 @@ int main( int argc, char* argv[] ){
   aligner.fsas[0].SetInputSymbols(aligner.isyms);
   aligner.fsas[0].SetOutputSymbols(aligner.isyms);
   if( FLAGS_lattice==true )
-    compileNBestFarArchive( &aligner, &aligner.fsas, FLAGS_far_name, FLAGS_nbest, pthresh );
+    compileNBestFarArchive( &aligner, &aligner.fsas, FLAGS_far_name, FLAGS_nbest, pthresh, FLAGS_fb, FLAGS_penalize );
   else
     write_alignments( &aligner, FLAGS_ofile, FLAGS_nbest );
 

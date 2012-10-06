@@ -40,6 +40,7 @@
  *
  */
 #include <fst/fstlib.h>
+#include "util.hpp"
 using namespace fst;
 
 class Arpa2OpenFST {

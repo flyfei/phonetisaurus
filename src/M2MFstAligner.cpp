@@ -131,7 +131,7 @@ void M2MFstAligner::expectation( ){
     fun to implement in the FST paradigm.
   */
   for( int i=0; i<fsas.size(); i++ ){
-    //Comput Forward and Backward probabilities
+    //Compute Forward and Backward probabilities
     ShortestDistance( fsas.at(i), &alpha );
     ShortestDistance( fsas.at(i), &beta, true );
 
@@ -178,9 +178,9 @@ float M2MFstAligner::maximization( bool lastiter ){
       LogArc::StateId q = siter.Value();
       for( MutableArcIterator<VectorFst<LogArc> > aiter(&fsas[i], q); !aiter.Done(); aiter.Next() ){
 	LogArc arc = aiter.Value();
-	if( penalize==true )
-	  arc.weight = alignment_model[arc.ilabel].Value() * penalties[arc.ilabel].tot;
-	else
+	//if( penalize==true )
+	  //arc.weight = alignment_model[arc.ilabel].Value() * penalties[arc.ilabel].tot;
+	//else
 	  arc.weight = alignment_model[arc.ilabel];
 	aiter.SetValue(arc);
       }
@@ -378,15 +378,13 @@ vector<PathData> M2MFstAligner::entry2alignfstnoinit( vector<string> seq1, vecto
   return write_alignment( fst, nbest );
 }
 
-
-vector<PathData> M2MFstAligner::write_alignment( const VectorFst<LogArc>& ifst, int nbest ){
-  //Generic alignment generator
-  VectorFst<StdArc> fst;
-  Map( ifst, &fst, LogToStdMapper() );
-
-  for( StateIterator<VectorFst<StdArc> > siter(fst); !siter.Done(); siter.Next() ){
+void M2MFstAligner::_penalize_arcs( VectorFst<StdArc>* fst ){
+  /*
+    Arc penalization routine.  Potentially useful for regularization and decoding.
+  */
+  for( StateIterator<VectorFst<StdArc> > siter(*fst); !siter.Done(); siter.Next() ){
     StdArc::StateId q = siter.Value();
-    for( MutableArcIterator<VectorFst<StdArc> > aiter(&fst,q); !aiter.Done(); aiter.Next() ){
+    for( MutableArcIterator<VectorFst<StdArc> > aiter(fst,q); !aiter.Done(); aiter.Next() ){
       //Prior to decoding we make several 'heuristic' modifications to the weights:
       // 1. A multiplier is applied to any multi-token substrings
       // 2. Any LogWeight::Zero() arc weights are reset to '99'.
@@ -424,7 +422,8 @@ vector<PathData> M2MFstAligner::write_alignment( const VectorFst<LogArc>& ifst, 
 	// alignment.  By further favoring 1-to-1 alignments the 1-best
 	// alignment corpus results in a more flexible joint n-gram model
 	// with regard to previously unseen data.  
-	arc.weight = alignment_model[arc.ilabel].Value() * ld->max;
+	//arc.weight = alignment_model[arc.ilabel].Value() * ld->max;
+	arc.weight = arc.weight.Value() * ld->max;
       }
       if( arc.weight == LogWeight::Zero() )
       	arc.weight = 999;
@@ -433,6 +432,18 @@ vector<PathData> M2MFstAligner::write_alignment( const VectorFst<LogArc>& ifst, 
       aiter.SetValue(arc);
     }
   }
+
+  return;
+}
+
+
+vector<PathData> M2MFstAligner::write_alignment( const VectorFst<LogArc>& ifst, int nbest ){
+  //Generic alignment generator
+  VectorFst<StdArc> fst;
+  Map( ifst, &fst, LogToStdMapper() );
+
+  //Call the arc-penalization routine
+  _penalize_arcs( &fst );
 
   VectorFst<StdArc> shortest;
   ShortestPath( fst, &shortest, nbest );

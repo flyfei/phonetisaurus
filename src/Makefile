@@ -32,8 +32,8 @@ OUT=../phonetisaurus-g2p ../phonetisaurus-align ../phonetisaurus-arpa2fst
 TMP=*.o
 EXTRA=-O2
 
-POBJS=Phonetisaurus.o FstPathFinder.o MBRDecoder.o 
-MOBJS=M2MFstAligner.o FstPathFinder.o MBRDecoder.o 
+POBJS=Phonetisaurus.o FstPathFinder.o MBRDecoder.o LatticePruner.o util.o
+MOBJS=M2MFstAligner.o FstPathFinder.o MBRDecoder.o LatticePruner.o util.o
 
 all: phonetisaurus-g2p phonetisaurus-align phonetisaurus-arpa2fst
 
@@ -49,17 +49,23 @@ FstPathFinder.o: FstPathFinder.cpp
 Arpa2Fst.o: Arpa2Fst.cpp
 	$(CC) $(EXTRA) Arpa2Fst.cpp -c -o Arpa2Fst.o
 
-M2MFstAligner.o: M2MFstAligner.cpp
+M2MFstAligner.o: util.o M2MFstAligner.cpp
 	$(CC) $(EXTRA) M2MFstAligner.cpp -c -o M2MFstAligner.o
 
-phonetisaurus-align: FstPathFinder.o M2MFstAligner.o phonetisaurus-align.cpp
+LatticePruner.o: util.o LatticePruner.cpp
+	$(CC) $(EXTRA) LatticePruner.cpp -c -o LatticePruner.o
+
+util.o: util.cpp
+	$(CC) $(EXTRA) util.cpp -c -o util.o
+
+phonetisaurus-align: util.o LatticePruner.o FstPathFinder.o M2MFstAligner.o phonetisaurus-align.cpp
 	$(CC) $(EXTRA) $(MOBJS) phonetisaurus-align.cpp -o ../phonetisaurus-align $(LIBS)
 
-phonetisaurus-g2p: FstPathFinder.o Phonetisaurus.o MBRDecoder.o phonetisaurus-g2p.cpp
+phonetisaurus-g2p: util.o LatticePruner.o FstPathFinder.o Phonetisaurus.o MBRDecoder.o phonetisaurus-g2p.cpp
 	$(CC) $(EXTRA) $(POBJS) phonetisaurus-g2p.cpp -o ../phonetisaurus-g2p $(LIBS)
 
-phonetisaurus-arpa2fst: Arpa2Fst.o phonetisaurus-arpa2fst.cpp
-	$(CC) $(EXTRA) Arpa2Fst.o phonetisaurus-arpa2fst.cpp -o ../phonetisaurus-arpa2fst $(LIBS)
+phonetisaurus-arpa2fst: util.o Arpa2Fst.o phonetisaurus-arpa2fst.cpp
+	$(CC) $(EXTRA) util.o Arpa2Fst.o phonetisaurus-arpa2fst.cpp -o ../phonetisaurus-arpa2fst $(LIBS)
 
 clean:
 	rm $(OUT) $(TMP)

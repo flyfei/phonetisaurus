@@ -30,7 +30,6 @@
 *
 */
 #include "Arpa2Fst.hpp"
-#include "util.hpp"
 	
 Arpa2OpenFST::Arpa2OpenFST( ) {
 	//Default constructor.

@@ -33,12 +33,11 @@
 #include <fst/fstlib.h>
 #include <fst/extensions/far/far.h>
 #include "FstPathFinder.hpp"
-#include "3rdparty/google/dense_hash_map"
 #include "util.hpp"
 using namespace std;
 
-typedef struct LabelDatum { int max, tot, lhs, rhs; bool lhsE, rhsE; };
-typedef google::dense_hash_map<LogArc::Label,LabelDatum> LabelData;
+//typedef struct LabelDatum { int max, tot, lhs, rhs; bool lhsE, rhsE; };
+//typedef google::dense_hash_map<LogArc::Label,LabelDatum> LabelData;
 
 namespace fst{
 class M2MFstAligner {
@@ -121,6 +120,8 @@ public:
   //Precompute the label and subsequence lengths for all possible alignment units
   //  this helps speedup the penalization and decoding routines.
   void computePenalties( );
+
+  void _penalize_arcs( VectorFst<StdArc>* fst );
 };
 }
 #endif // M2MFSTALIGNER_H //
