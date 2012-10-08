@@ -32,7 +32,6 @@
 */
 #include <fst/fstlib.h>
 #include <fst/extensions/far/far.h>
-#include "FstPathFinder.hpp"
 #include "util.hpp"
 using namespace std;
 
@@ -53,6 +52,10 @@ class M2MFstAligner {
     The user may optionally specify whether to allow deletions 
      for SEQ1 or SEQ2, as well as a maximum subsequence length 
      for each sequence.  
+
+    This class does not implement any lattice pruning or printing
+     methods.  A combination of the LatticePruner and FstPathFinder
+     classes may be used to achieve this a-la phonetisaurus-align.cpp.
   */
 public: 
   //Basics declarations
@@ -66,6 +69,8 @@ public:
   string eps;
   string skip;
   bool   penalize;
+  bool   restrict;
+  bool   penalize_em;
   vector<LogWeight> alpha, beta;
   //This will be used during decoding to clean the paths
   set<string>   skipSeqs;
@@ -89,9 +94,9 @@ public:
   //Train from scratch using a dictionary
   M2MFstAligner( bool _seq1_del, bool _seq2_del, int _seq1_max, int _seq2_max, 
 		 string _seq1_sep, string _seq2_sep, string _s1s2_sep,
-		 string _eps, string _skip, bool _penalize );
+		 string _eps, string _skip, bool _penalize, bool _penalize_em, bool _restrict );
   //We've already got a model to go on
-  M2MFstAligner( string _model_file );
+  M2MFstAligner( string _model_file, bool _penalize, bool _penalize_em, bool _restrict );
 
   //Write an aligner model to disk.  Critical info is stored in the 
   // the symbol table so that it can be restored when the model is loaded.
@@ -104,7 +109,7 @@ public:
 
   //Initialize all of the training data
   void entry2alignfst( vector<string> seq1, vector<string> seq2 );
-  vector<PathData> entry2alignfstnoinit( vector<string> seq1, vector<string> seq2, int nbest, string lattice="" );
+  void entry2alignfstnoinit( vector<string> seq1, vector<string> seq2, int nbest, string lattice="" );
 
   //The expectation routines
   void expectation( );
@@ -112,14 +117,10 @@ public:
   //The maximization routine.  Returns the change since the last iteration
   float maximization( bool lastiter );
 
-  //Print out the EM-optimized alignment for the training data
-  vector<PathData> write_alignment( const VectorFst<LogArc>& ifst, int nbest );
-
   //Precompute the label and subsequence lengths for all possible alignment units
   //  this helps speedup the penalization and decoding routines.
-  void computePenalties( );
+  void _compute_penalties( LogArc::Label label, int lhs, int rhs, bool lhsE, bool rhsE );
 
-  void _penalize_arcs( VectorFst<StdArc>* fst );
 };
 }
 #endif // M2MFSTALIGNER_H //

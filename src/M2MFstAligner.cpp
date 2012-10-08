@@ -39,7 +39,7 @@ M2MFstAligner::M2MFstAligner( ){
 
 M2MFstAligner::M2MFstAligner( bool _seq1_del, bool _seq2_del, int _seq1_max, int _seq2_max, 
 			      string _seq1_sep, string _seq2_sep, string _s1s2_sep, 
-			      string _eps, string _skip, bool _penalize ){
+			      string _eps, string _skip, bool _penalize, bool _penalize_em, bool _restrict ){
   //Base constructor.  Determine whether or not to allow deletions in seq1 and seq2
   // as well as the maximum allowable subsequence size.
   seq1_del = _seq1_del;
@@ -50,6 +50,8 @@ M2MFstAligner::M2MFstAligner( bool _seq1_del, bool _seq2_del, int _seq1_max, int
   seq2_sep = _seq2_sep;
   s1s2_sep = _s1s2_sep;
   penalize = _penalize;
+  penalize_em = _penalize_em;
+  restrict = _restrict;
   eps      = _eps;
   skip     = _skip;
   skipSeqs.insert(eps);
@@ -74,12 +76,17 @@ M2MFstAligner::M2MFstAligner( bool _seq1_del, bool _seq2_del, int _seq1_max, int
   penalties.set_empty_key(NULL);
 }
 
-M2MFstAligner::M2MFstAligner( string _model_file ){
+M2MFstAligner::M2MFstAligner( string _model_file, bool _penalize, bool _penalize_em, bool _restrict  ){
   /*
     Initialize the aligner with a previously trained model.
     The model requires that the first several symbols in the 
     symbols table contain the separator and other bookkeeping info.
   */
+
+  restrict    = _restrict;
+  penalize    = _penalize;
+  penalize_em = _penalize_em;
+
   VectorFst<LogArc>* model = VectorFst<LogArc>::Read( _model_file );
   for( StateIterator<VectorFst<LogArc> > siter(*model); !siter.Done(); siter.Next() ){
     LogArc::StateId q = siter.Value();
@@ -178,10 +185,18 @@ float M2MFstAligner::maximization( bool lastiter ){
       LogArc::StateId q = siter.Value();
       for( MutableArcIterator<VectorFst<LogArc> > aiter(&fsas[i], q); !aiter.Done(); aiter.Next() ){
 	LogArc arc = aiter.Value();
-	//if( penalize==true )
-	  //arc.weight = alignment_model[arc.ilabel].Value() * penalties[arc.ilabel].tot;
-	//else
+	if( penalize_em==true ){
+	  LabelDatum* ld = &penalties[arc.ilabel];
+	  if( ld->lhs>1 && ld->rhs>1 ){
+	    arc.weight = 99; 
+	  }else if( ld->lhsE==false && ld->rhsE==false ){
+	    arc.weight = arc.weight.Value() * ld->tot;
+	  }
+	  if( arc.weight == LogWeight::Zero() || arc.weight != arc.weight )
+	    arc.weight = 99;
+	}else{
 	  arc.weight = alignment_model[arc.ilabel];
+	}
 	aiter.SetValue(arc);
       }
     }
@@ -221,14 +236,14 @@ void M2MFstAligner::Sequences2FST( VectorFst<LogArc>* fst, vector<string>* seq1,
 	    vector<string> subseq2( seq2->begin()+j, seq2->begin()+j+l );
 	    int is = isyms->AddSymbol(skip+s1s2_sep+vec2str(subseq2, seq2_sep));
 	    ostate = i*(seq2->size()+1) + (j+l);
-	    //LogArc arc( is, is, LogWeight::One().Value()*(l+1)*2, ostate );
 	    LogArc arc( is, is, 99, ostate );
-	    //LogArc arc( is, is, LogWeight::Zero(), ostate );
 	    fst->AddArc( istate, arc );
-	    if( prev_alignment_model.find(arc.ilabel)==prev_alignment_model.end() )
+	    if( prev_alignment_model.find(arc.ilabel)==prev_alignment_model.end() ){
 	      prev_alignment_model.insert( pair<LogArc::Label,LogWeight>(arc.ilabel,arc.weight) );
-	    else
+	      _compute_penalties( arc.ilabel, 1, l, true, false );
+	    }else{
 	      prev_alignment_model[arc.ilabel] = Plus(prev_alignment_model[arc.ilabel],arc.weight);
+	    }
 	    total = Plus( total, arc.weight );
 	  }
 	}
@@ -240,14 +255,14 @@ void M2MFstAligner::Sequences2FST( VectorFst<LogArc>* fst, vector<string>* seq1,
 	    vector<string> subseq1( seq1->begin()+i, seq1->begin()+i+k );
 	    int is = isyms->AddSymbol(vec2str(subseq1, seq1_sep)+s1s2_sep+skip);
 	    ostate = (i+k)*(seq2->size()+1) + j;
-	    //LogArc arc( is, is, LogWeight::One().Value()*(k+1)*2, ostate );
 	    LogArc arc( is, is, 99, ostate );
-	    //LogArc arc( is, is, LogWeight::Zero(), ostate );
 	    fst->AddArc( istate, arc );
-	    if( prev_alignment_model.find(arc.ilabel)==prev_alignment_model.end() )
+	    if( prev_alignment_model.find(arc.ilabel)==prev_alignment_model.end() ){
 	      prev_alignment_model.insert( pair<LogArc::Label,LogWeight>(arc.ilabel,arc.weight) );
-	    else
+	      _compute_penalties( arc.ilabel, k, 1, false, true );
+	    }else{
 	      prev_alignment_model[arc.ilabel] = Plus(prev_alignment_model[arc.ilabel],arc.weight);
+	    }
 	    total = Plus(total, arc.weight);
 	  }
 	}
@@ -261,20 +276,21 @@ void M2MFstAligner::Sequences2FST( VectorFst<LogArc>* fst, vector<string>* seq1,
 	    vector<string> subseq2( seq2->begin()+j, seq2->begin()+j+l );
 	    string s2 = vec2str(subseq2, seq2_sep);
 	    //This says only 1-M and N-1 allowed, no M-N links!
-	    //if( l>1 && k>1)
-	    //  continue;
+	    if( restrict==true && l>1 && k>1)
+	      continue;
 	    int is = isyms->AddSymbol(s1+s1s2_sep+s2);
 	    ostate = (i+k)*(seq2->size()+1) + (j+l);
 	    LogArc arc( is, is, LogWeight::One().Value()*(k+l), ostate );
-	    //LogArc arc( is, is, LogWeight::One().Value(), ostate );
 	    fst->AddArc( istate, arc );
 	    //During the initialization phase, just count non-eps transitions
 	    //We currently initialize to uniform probability so there is also 
             // no need to tally anything here.
-	    if( prev_alignment_model.find(arc.ilabel)==prev_alignment_model.end() )
+	    if( prev_alignment_model.find(arc.ilabel)==prev_alignment_model.end() ){
 	      prev_alignment_model.insert( pair<LogArc::Label,LogWeight>(arc.ilabel, arc.weight) );
-	    else
+	      _compute_penalties( arc.ilabel, k, l, false, false );
+	    }else{
 	      prev_alignment_model[arc.ilabel] = Plus(prev_alignment_model[arc.ilabel],arc.weight);
+	    }
 	    total = Plus( total, arc.weight );
 	  }
 	}
@@ -313,7 +329,6 @@ void M2MFstAligner::Sequences2FSTNoInit( VectorFst<LogArc>* fst, vector<string>*
 	    vector<string> subseq2( seq2->begin()+j, seq2->begin()+j+l );
 	    int is = isyms->Find(skip+s1s2_sep+vec2str(subseq2, seq2_sep));
 	    ostate = i*(seq2->size()+1) + (j+l);
-	    //LogArc arc( is, is, LogWeight::One().Value()*(l+1)*2, ostate );
 	    LogArc arc( is, is, 99, ostate );
 	    fst->AddArc( istate, arc );
 	  }
@@ -326,7 +341,6 @@ void M2MFstAligner::Sequences2FSTNoInit( VectorFst<LogArc>* fst, vector<string>*
 	    vector<string> subseq1( seq1->begin()+i, seq1->begin()+i+k );
 	    int is = isyms->Find(vec2str(subseq1, seq1_sep)+s1s2_sep+skip);
 	    ostate = (i+k)*(seq2->size()+1) + j;
-	    //LogArc arc( is, is, LogWeight::One().Value()*(k+1)*2, ostate );
 	    LogArc arc( is, is, 99, ostate );
 	    fst->AddArc( istate, arc );
 	  }
@@ -340,7 +354,7 @@ void M2MFstAligner::Sequences2FSTNoInit( VectorFst<LogArc>* fst, vector<string>*
 	    string s1 = vec2str(subseq1, seq1_sep);
 	    vector<string> subseq2( seq2->begin()+j, seq2->begin()+j+l );
 	    string s2 = vec2str(subseq2, seq2_sep);
-	    if( l>1 && k>1)
+	    if( restrict==true && l>1 && k>1)
 	      continue;
 	    int is = isyms->Find(s1+s1s2_sep+s2);
 	    ostate = (i+k)*(seq2->size()+1) + (j+l);
@@ -370,126 +384,31 @@ void M2MFstAligner::entry2alignfst( vector<string> seq1, vector<string> seq2 ){
   return;
 }
 
-vector<PathData> M2MFstAligner::entry2alignfstnoinit( vector<string> seq1, vector<string> seq2, int nbest, string lattice ){
+void M2MFstAligner::entry2alignfstnoinit( vector<string> seq1, vector<string> seq2, int nbest, string lattice ){
+  /*
+    There is a pre-trained alignment model, so just use the model parameters to weight the alignment arcs.
+    This could probably be merged with "entry2alignfst()", but we'll leave it for now.
+  */
   VectorFst<LogArc> fst;
   Sequences2FSTNoInit( &fst, &seq1, &seq2 );
-  if( lattice.compare("") != 0 )
-    fst.Write(lattice);
-  return write_alignment( fst, nbest );
-}
-
-void M2MFstAligner::_penalize_arcs( VectorFst<StdArc>* fst ){
-  /*
-    Arc penalization routine.  Potentially useful for regularization and decoding.
-  */
-  for( StateIterator<VectorFst<StdArc> > siter(*fst); !siter.Done(); siter.Next() ){
-    StdArc::StateId q = siter.Value();
-    for( MutableArcIterator<VectorFst<StdArc> > aiter(fst,q); !aiter.Done(); aiter.Next() ){
-      //Prior to decoding we make several 'heuristic' modifications to the weights:
-      // 1. A multiplier is applied to any multi-token substrings
-      // 2. Any LogWeight::Zero() arc weights are reset to '99'.
-      //    We are basically resetting 'Infinity' values to a 'smallest non-Infinity'
-      //     so that the ShortestPath algorithm actually produces something no matter what.
-      // 3. Any arcs that consist of subseq1:subseq2 being the same length and subseq1>1 
-      //       are set to '99' this forces shortestpath to choose arcs where one of the
-      //       following conditions holds true
-      //      * len(subseq1)>1 && len(subseq2)!=len(subseq1)
-      //      * len(subseq2)>1 && len(subseq1)!=len(subseq2)
-      //      * len(subseq1)==len(subseq2)==1
-      //I suspect these heuristics can be eliminated with a better choice of the initialization
-      // function and maximization function, but this is the way that m2m-aligner works, so
-      // it makes sense for our first cut implementation.
-      //In any case, this guarantees that M2MFstAligner produces results identical to those 
-      // produced by m2m-aligner - but with a bit more reliability.
-      //UPDATE: this now produces a better alignment than m2m-aligner.  
-      //  The maxl heuristic is still in place.  The aligner will produce *better* 1-best alignments
-      //  *without* the maxl heuristic below, BUT this comes at the cost of producing a less 
-      //  flexible corpus.  That is, for a small training corpus like nettalk, if we use the 
-      //  best alignment we wind up with more 'chunks' and thus get a worse coverage for unseen 
-      //  data.  Using the aignment lattices to train the joint ngram model solves this problem.
-      //  Oh baby.  Can't wait to for everyone to see the paper!
-      //NOTE: this is going to fail if we encounter any alignments in a new test item that never
-      // occurred in the original model.
-      StdArc     arc = aiter.Value();
-      LabelDatum* ld = &penalties[arc.ilabel];
-
-      if( ld->lhs>1 && ld->rhs>1 ){
-        arc.weight = 999; 
-      }else{
-	//Penalize m-to-1 / 1-to-m links.  This produces 
-	// WORSE 1-best alignments, but results in better joint n-gram 
-	// models for small training corpora when using only the 1-best
-	// alignment.  By further favoring 1-to-1 alignments the 1-best
-	// alignment corpus results in a more flexible joint n-gram model
-	// with regard to previously unseen data.  
-	//arc.weight = alignment_model[arc.ilabel].Value() * ld->max;
-	arc.weight = arc.weight.Value() * ld->max;
-      }
-      if( arc.weight == LogWeight::Zero() )
-      	arc.weight = 999;
-      if( arc.weight != arc.weight )
-	arc.weight = 999;
-      aiter.SetValue(arc);
-    }
-  }
-
+  fsas.push_back(fst);
   return;
 }
 
-
-vector<PathData> M2MFstAligner::write_alignment( const VectorFst<LogArc>& ifst, int nbest ){
-  //Generic alignment generator
-  VectorFst<StdArc> fst;
-  Map( ifst, &fst, LogToStdMapper() );
-
-  //Call the arc-penalization routine
-  _penalize_arcs( &fst );
-
-  VectorFst<StdArc> shortest;
-  ShortestPath( fst, &shortest, nbest );
-  RmEpsilon( &shortest );
-  //Skip empty results.  This should only happen
-  // in the following situations:
-  //  1. seq1_del=false && len(seq1)<len(seq2) 
-  //  2. seq2_del=false && len(seq1)>len(seq2)
-  //In both 1.and 2. the issue is that we need to 
-  // insert a 'skip' in order to guarantee at least
-  // one valid alignment path through seq1*seq2, but
-  // user params didn't allow us to.  
-  //Probably better to insert these where necessary
-  // during initialization, regardless of user prefs.
-  if( shortest.NumStates()==0 ){
-    vector<PathData> dummy;
-    return dummy;
-  }
-  FstPathFinder pathfinder( skipSeqs );
-  pathfinder.isyms = isyms;
-  pathfinder.findAllStrings( shortest );
-  return pathfinder.paths;
-}
-
-void M2MFstAligner::computePenalties( ){
+void M2MFstAligner::_compute_penalties( LogArc::Label label, int lhs, int rhs, bool lhsE, bool rhsE ){
   /*
     Precompute exponential penalties for all possible alignment units.
-    Later on this will also be where expert rules are precompiled.
   */
-  map<LogArc::Label,LogWeight>::iterator it;
-  for( it=prev_alignment_model.begin(); it != prev_alignment_model.end(); it++ ){
-    string ioLabel = isyms->Find((*it).first);
-    vector<string> InOut = tokenize_utf8_string( &ioLabel, &s1s2_sep );
-    if( InOut.size()!=2 ){
-      cerr << "Input: " << ioLabel << " and separator: " << s1s2_sep << " do not yield an input-output label pair!" << endl;
-      cerr << "segfault ahoy!" << endl;
-    }
-    vector<string> inL   = tokenize_utf8_string( &InOut.at(0), &seq1_sep );    
-    vector<string> outL  = tokenize_utf8_string( &InOut.at(1), &seq2_sep );    
-    LabelDatum ld;
-    ld.lhs  = inL.size(); ld.rhs = outL.size();
-    ld.max  = max(ld.lhs,ld.rhs); ld.tot = ld.lhs+ld.rhs;
-    ld.lhsE = false; ld.rhsE = false;
-    penalties.insert( LabelData::value_type((*it).first, ld) );
-  }
-    
+
+  LabelDatum ld;
+  ld.lhs  = lhs;   ld.rhs = rhs;
+  ld.lhsE = lhsE; ld.rhsE = rhsE;
+
+  ld.max  = max(lhs, rhs);  
+  ld.tot  = lhs + rhs;
+
+  penalties.insert( LabelData::value_type( label, ld ) );
+
   return;
 }
 

@@ -31,6 +31,7 @@
 */
 #include "M2MFstAligner.hpp"
 #include "LatticePruner.hpp"
+#include "FstPathFinder.hpp"
 #include "util.hpp"
 using namespace fst;
 
@@ -52,17 +53,53 @@ void load_input_file( M2MFstAligner* aligner, string input_file, string delim, s
     }
     infile.close();
   }
-  aligner->computePenalties( );
+  //aligner->computePenalties( );
 
   return;
 }
 
-void write_alignments( M2MFstAligner* aligner, string ofile_name, int nbest ){
-  /* Write the alignments to a file. */
+void write_alignments( M2MFstAligner* aligner, string ofile_name, StdArc::Weight threshold, int nbest, bool fb, bool penalize ){
+  /* 
+     Write the raw alignments to a file in text-based corpus format. 
+
+     NOTE: Although N-best and other pruning strategies are supported,
+           the final format is that of a standard text corpus.  All relative
+	   token and pronunciation scores will be stripped.  In general
+	   this means that, unless you are very lucky with your combined 
+	   pruning strategy the un-ranked N-best hypotheses will result in a 
+	   lower-quality joint N-gram model.
+
+	   This approach is best used with simple 1-best.
+  */
+
+  //Build us a lattice pruner
+  LatticePruner pruner( aligner->penalties, threshold, nbest, fb, penalize );
 
   ofstream ofile(ofile_name.c_str());
   for( int i=0; i<aligner->fsas.size(); i++ ){
-    vector<PathData> paths = aligner->write_alignment( aligner->fsas[i], nbest );
+    //Map to Tropical semiring
+    VectorFst<StdArc>* tfst = new VectorFst<StdArc>();
+    Map(aligner->fsas.at(i), tfst, LogToStdMapper());
+    pruner.prune_fst( tfst );
+    RmEpsilon( tfst );
+    //Skip empty results.  This should only happen
+    // in the following situations:
+    //  1. seq1_del=false && len(seq1)<len(seq2) 
+    //  2. seq2_del=false && len(seq1)>len(seq2)
+    //In both 1.and 2. the issue is that we need to 
+    // insert a 'skip' in order to guarantee at least
+    // one valid alignment path through seq1*seq2, but
+    // user params didn't allow us to.  
+    //Probably better to insert these where necessary
+    // during initialization, regardless of user prefs.
+    vector<PathData> paths;
+    if( tfst->NumStates()>0 ){
+      FstPathFinder pathfinder( aligner->skipSeqs );
+      pathfinder.isyms = aligner->isyms;
+      pathfinder.findAllStrings( *tfst );
+      paths = pathfinder.paths;
+    }
+
     for( int j=0; j<paths.size(); j++ ){
 	for( int k=0; k<paths[j].path.size(); k++ ){
 	  if( ofile )
@@ -81,13 +118,14 @@ void write_alignments( M2MFstAligner* aligner, string ofile_name, int nbest ){
 	else
 	  cout << endl;
     }
+    delete tfst;
   }
 
   return;
 }
 
 void compileNBestFarArchive( M2MFstAligner* aligner, vector<VectorFst<LogArc> > *fsts, string far_name, 
-			     int nbest, StdArc::Weight threshold, bool fb, bool penalize ){
+			     StdArc::Weight threshold, int nbest, bool fb, bool penalize ){
   /*
     Generic method for compiling an FstARchive from a vector of FST lattices.
     The 'nbest' and 'threshold' parameters may be used to heuristically prune
@@ -121,23 +159,13 @@ void compileNBestFarArchive( M2MFstAligner* aligner, vector<VectorFst<LogArc> > 
     Map(fsts->at(i), tfst, LogToStdMapper());
     pruner.prune_fst( tfst );
 
-    /*
-    //Penalize the arcs
-    aligner->_penalize_arcs( tfst );
-
-    //Prune arcs and states based on a threshold value
-    if( threshold.Value() != LogWeight::Zero() )
-      Prune( tfst, threshold );
-
-    //Extract the N-best shortest paths from the possibly pruned lattice
-    ShortestPath( *tfst, sfst, nbest );
-    */
-
     //Map back to the Log semiring
     Map(*tfst, lfst, StdToLogMapper());
 
     //Perform posterior normalization of the N-best lattice by pushing weights 
-    // in the log semiring and then removing the final weight.
+    //  in the log semiring and then removing the final weight.
+    //When N=1, this will also have the effect of removing all weights.
+    //  The .far result here will be identical to the non-lattice 'write_alignments()'.
     Push<LogArc, REWEIGHT_TO_FINAL>(*lfst, pfst, kPushWeights);
     for( StateIterator<VectorFst<LogArc> > siter(*pfst); !siter.Done(); siter.Next() ){
       size_t i = siter.Value();
@@ -175,7 +203,8 @@ DEFINE_string( delim,        "\t",  "Delimiter separating entry one and entry tw
 DEFINE_string( eps,       "<eps>",  "Epsilon symbol." );
 DEFINE_string( skip,          "_",  "Skip token used to represent null transitions.  Distinct from epsilon." );
 DEFINE_bool(   penalize,     true,  "Penalize scores." );
-DEFINE_bool(   model,          "",  "Load a pre-trained model for use." );
+DEFINE_bool(   penalize_em, false,  "Penalize links during EM training." );
+DEFINE_bool(   model,          "",  "Load a pre-trained model for use (implemented by not yet supported)." );
 DEFINE_string( ofile,          "",  "Output file to write the aligned dictionary to." );
 DEFINE_bool(   mbr,         false,  "Use the LMBR decoder (not yet implemented)." );
 DEFINE_bool(   fb,          false,  "Use forward-backward pruning for the alignment lattices." );
@@ -185,9 +214,8 @@ DEFINE_int32(  nbest,           1,  "Output the N-best alignments given the mode
 DEFINE_double( pthresh,       -99,  "Pruning threshold.  Use to prune unlikely N-best candidates when using multiple alignments.");
 DEFINE_string( s1_char_delim,  "",  "Sequence one input delimeter." );
 DEFINE_string( s2_char_delim, " ",  "Sequence two input delimeter." );
-DEFINE_string( far_name,  "t.far",  "Name of the far archive, if using multiple alignments." );
 DEFINE_bool(   lattice,     false,  "Write out the alignment lattices as an fst archive (.far)." );
-
+DEFINE_bool(   restrict,     true,  "Restrict links to M-1, 1-N during initialization." );
 int main( int argc, char* argv[] ){
   string usage = "phonetisaurus-align dictionary aligner.\n\n Usage: ";
   set_new_handler(FailedNewHandler);
@@ -196,7 +224,7 @@ int main( int argc, char* argv[] ){
   M2MFstAligner aligner( 
 			FLAGS_seq1_del, FLAGS_seq2_del, FLAGS_seq1_max, FLAGS_seq2_max, 
 			FLAGS_seq1_sep, FLAGS_seq2_sep, FLAGS_s1s2_sep, 
-			FLAGS_eps, FLAGS_skip, FLAGS_penalize 
+			FLAGS_eps, FLAGS_skip, FLAGS_penalize, FLAGS_penalize_em, FLAGS_restrict
 			 );
 
   load_input_file( &aligner, FLAGS_input, FLAGS_delim, FLAGS_s1_char_delim, FLAGS_s2_char_delim );
@@ -218,9 +246,9 @@ int main( int argc, char* argv[] ){
   aligner.fsas[0].SetInputSymbols(aligner.isyms);
   aligner.fsas[0].SetOutputSymbols(aligner.isyms);
   if( FLAGS_lattice==true )
-    compileNBestFarArchive( &aligner, &aligner.fsas, FLAGS_far_name, FLAGS_nbest, pthresh, FLAGS_fb, FLAGS_penalize );
+    compileNBestFarArchive( &aligner, &aligner.fsas, FLAGS_ofile, pthresh, FLAGS_nbest, FLAGS_fb, FLAGS_penalize );
   else
-    write_alignments( &aligner, FLAGS_ofile, FLAGS_nbest );
+    write_alignments( &aligner, FLAGS_ofile, pthresh, FLAGS_nbest, FLAGS_fb, FLAGS_penalize );
 
   return 1;
 }

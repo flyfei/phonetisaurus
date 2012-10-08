@@ -59,19 +59,33 @@ void LatticePruner::prune_fst( VectorFst<StdArc>* fst ){
   if( penalize==true )
     _penalize_arcs( fst );
 
+  if( nbest==1 ){
+    //If N=1 then all the remaining stuff is a waste of time.
+    //This is because the pruning heuristics are all computed
+    // *relative* to the 1-best hypothesis.  
+    //This is in contrast LMBR and arc penalization.
+    *fst = _nbest_prune( fst );
+    return;
+  }
+
   if( fb==true )
     _forward_backward( fst );
 
   if( beam.Value() != LogWeight::Zero() )
     Prune( fst, beam );
 
-  if( nbest > 0 )
+  if( nbest > 1 )
     *fst = _nbest_prune( fst );
 
   return;
 }
 
 VectorFst<StdArc> LatticePruner::_nbest_prune( VectorFst<StdArc>* fst ){
+  /* 
+     This is just a destructive wrapper for the OpenFst ShortestPath 
+     implementation.  I wish they'd implement desctructive versions of
+     all the algos in the library...
+  */
   VectorFst<StdArc> sfst;
 
   ShortestPath( *fst, &sfst, nbest );  
@@ -80,6 +94,13 @@ VectorFst<StdArc> LatticePruner::_nbest_prune( VectorFst<StdArc>* fst ){
 }
 
 void LatticePruner::_forward_backward( VectorFst<StdArc>* fst ){
+  /*
+    OpenFst-based implementation of forward-backward lattice pruning based on,
+       Sixtus and Ortmanns, "HIGH QUALITY WORD GRAPHS USING FORWARD-BACKWARD PRUNING", 1999
+
+    Note-to-self: It seems to give consistent WER and PER improvements so I guess I 
+     got the implementation right, but it seems like maybe it was too easy.
+  */
   //Setup
   VectorFst<LogArc>* pfst = new VectorFst<LogArc>();
   VectorFst<LogArc>* lfst = new VectorFst<LogArc>();
@@ -100,7 +121,7 @@ void LatticePruner::_forward_backward( VectorFst<StdArc>* fst ){
   ShortestDistance( *pfst, &alpha );
   ShortestDistance( *pfst, &beta, true );
 
-  //Compute arc posteriors
+  //Compute arc posteriors.  This is the same as the Expectation step.
   for( StateIterator<VectorFst<LogArc> > siter(*pfst); !siter.Done(); siter.Next() ){
     LogArc::StateId q = siter.Value();
     for( MutableArcIterator<VectorFst<LogArc> > aiter(pfst,q); !aiter.Done(); aiter.Next() ){
@@ -113,6 +134,7 @@ void LatticePruner::_forward_backward( VectorFst<StdArc>* fst ){
       }
     }
   }
+
   Map(*pfst, fst, LogToStdMapper()); 
 
   delete lfst, pfst;
