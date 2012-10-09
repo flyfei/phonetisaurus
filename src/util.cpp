@@ -70,7 +70,7 @@ vector<string> tokenize_utf8_string( string* utf8_string, string* delimiter ) {
 
   do {
     str_j = str_i;
-    uint32_t code = utf8::next(str_i, end); // get 32 bit code of a utf-8 symbol
+    utf8::uint32_t code = utf8::next(str_i, end); // get 32 bit code of a utf-8 symbol
     if (code == 0)
       continue;
     int start = strlen(str) - strlen(str_j);

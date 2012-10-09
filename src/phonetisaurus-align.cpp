@@ -150,8 +150,6 @@ void compileNBestFarArchive( M2MFstAligner* aligner, vector<VectorFst<LogArc> > 
     //There has got to be a more efficient way to do this!
     VectorFst<StdArc>* tfst = new VectorFst<StdArc>();
     VectorFst<LogArc>* lfst = new VectorFst<LogArc>();
-    VectorFst<StdArc>* ifst = new VectorFst<StdArc>();
-    VectorFst<StdArc>* sfst = new VectorFst<StdArc>();
     VectorFst<LogArc>* pfst = new VectorFst<LogArc>();
     VectorFst<StdArc>* ffst = new VectorFst<StdArc>();
 
@@ -182,7 +180,7 @@ void compileNBestFarArchive( M2MFstAligner* aligner, vector<VectorFst<LogArc> > 
     //Write the final result to the FARchive
     far_writer->Add(key_prefix + key + key_suffix, *ffst);
     //Cleanup the temporary FSTs
-    delete lfst, tfst, ifst, sfst, pfst, ffst;
+    delete lfst, tfst, pfst, ffst;
   }
   //Cleanup the archive writer
   delete far_writer;
