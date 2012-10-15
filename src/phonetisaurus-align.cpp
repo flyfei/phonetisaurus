@@ -95,17 +95,19 @@ void write_alignments( M2MFstAligner* aligner, string ofile_name, StdArc::Weight
     vector<PathData> paths;
     if( tfst->NumStates()>0 ){
       FstPathFinder pathfinder( aligner->skipSeqs );
-      pathfinder.isyms = aligner->isyms;
-      pathfinder.findAllStrings( *tfst );
+      //pathfinder.isyms = aligner->isyms;
+      //pathfinder.findAllStrings( *tfst );
+      pathfinder.extract_all_paths( *tfst );
       paths = pathfinder.paths;
     }
 
     for( int j=0; j<paths.size(); j++ ){
 	for( int k=0; k<paths[j].path.size(); k++ ){
+	  string sym = aligner->isyms->Find(paths[j].path[k]);
 	  if( ofile )
-	    ofile << paths[j].path[k];
+	    ofile << sym;
 	  else
-	    cout << paths[j].path[k];
+	    cout << sym;
 	  if( j<paths[j].path.size() ){
 	    if( ofile )
 	      ofile << " ";

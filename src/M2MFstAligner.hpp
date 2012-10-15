@@ -73,7 +73,7 @@ public:
   bool   penalize_em;
   vector<LogWeight> alpha, beta;
   //This will be used during decoding to clean the paths
-  set<string>   skipSeqs;
+  set<int>   skipSeqs;
   //OpenFst stuff
   //These will be overwritten after each FST construction
   vector<VectorFst<LogArc> > fsas; 

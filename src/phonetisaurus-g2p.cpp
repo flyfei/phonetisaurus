@@ -43,7 +43,7 @@ void phoneticizeWord(
 
   vector<PathData> paths = phonetisaurus.phoneticize( entry, nbest, beam );
 
-  if( output_words==0){
+  if( output_words==0 ){
     while( phonetisaurus.printPaths( paths, nbest )==true ){
       nbest++;
       paths = phonetisaurus.phoneticize( entry, nbest, beam );

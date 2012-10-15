@@ -291,7 +291,6 @@ vector<PathData> Phonetisaurus::phoneticize( vector<string> entry, int nbest, in
     */
     RmEpsilon( &shortest );
     FstPathFinder pathfinder( skipSeqs );
-    //pathfinder.findAllStrings( shortest );
     pathfinder.extract_all_paths( shortest );
     
     return pathfinder.paths;
@@ -316,24 +315,25 @@ bool Phonetisaurus::printPaths( vector<PathData> paths, int nbest, string correc
         
         size_t j;
         for( j=0; j < paths[k].path.size(); j++ ){
-            if( paths[k].path[j] != tie )
+	  string sym = osyms->Find(paths[k].path[j]);
+	  if( sym != tie )
                 replace( 
-                        paths[k].path[j].begin(), 
-                        paths[k].path[j].end(), 
+                        sym.begin(), 
+                        sym.end(), 
                         *tie.c_str(),
                         ' '
                         );
-            onepath += paths[k].path[j];
+	  onepath += sym;
             
-            if( j != paths[k].path.size()-1 )
-                onepath += " ";
+	  if( j != paths[k].path.size()-1 )
+	    onepath += " ";
         }
 	if( onepath == "" )
 	  continue;
 	empty_path = false;
 	if( word != "" )
 	  cout << word << "\t";
-        cout << paths[k].pathcost << "\t" << onepath;
+        cout << paths[k].cost << "\t" << onepath;
         if( correct != "" )
             cout << "\t" << correct;
         cout << endl;

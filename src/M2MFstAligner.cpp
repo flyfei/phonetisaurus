@@ -54,7 +54,7 @@ M2MFstAligner::M2MFstAligner( bool _seq1_del, bool _seq2_del, int _seq1_max, int
   restrict = _restrict;
   eps      = _eps;
   skip     = _skip;
-  skipSeqs.insert(eps);
+  skipSeqs.insert(0);
   isyms = new SymbolTable("syms");
   //Add all the important symbols to the table.  We can store these 
   // in the model that we train and then attach them to the fst model
