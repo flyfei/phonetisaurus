@@ -30,8 +30,8 @@
 *
 */
 #include <fst/fstlib.h>
-#include "3rdparty/utf8.h"
-#include "3rdparty/google/dense_hash_map"
+#include <utf8.h>                                                                                                                                                                   
+#include <google/dense_hash_map>
 using namespace fst;
 
 typedef struct LabelDatum { int max, tot, lhs, rhs; bool lhsE, rhsE; };

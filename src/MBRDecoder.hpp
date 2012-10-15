@@ -30,7 +30,7 @@
 #ifndef MBRDECODER_H
 #define MBRDECODER_H
 #include <fst/fstlib.h>
-#include "3rdparty/google/dense_hash_map"
+#include <google/dense_hash_map>
 using namespace fst;
 
 typedef SigmaMatcher<SortedMatcher<Fst<StdArc> > > SSM;
