@@ -202,7 +202,7 @@ DEFINE_string( eps,       "<eps>",  "Epsilon symbol." );
 DEFINE_string( skip,          "_",  "Skip token used to represent null transitions.  Distinct from epsilon." );
 DEFINE_bool(   penalize,     true,  "Penalize scores." );
 DEFINE_bool(   penalize_em, false,  "Penalize links during EM training." );
-DEFINE_bool(   model,          "",  "Load a pre-trained model for use (implemented by not yet supported)." );
+DEFINE_bool(   load_model,          "",  "Load a pre-trained model for use." );
 DEFINE_string( ofile,          "",  "Output file to write the aligned dictionary to." );
 DEFINE_bool(   mbr,         false,  "Use the LMBR decoder (not yet implemented)." );
 DEFINE_bool(   fb,          false,  "Use forward-backward pruning for the alignment lattices." );
@@ -212,6 +212,7 @@ DEFINE_int32(  nbest,           1,  "Output the N-best alignments given the mode
 DEFINE_double( pthresh,       -99,  "Pruning threshold.  Use to prune unlikely N-best candidates when using multiple alignments.");
 DEFINE_string( s1_char_delim,  "",  "Sequence one input delimeter." );
 DEFINE_string( s2_char_delim, " ",  "Sequence two input delimeter." );
+DEFINE_string( write_model,    "",  "Write out the alignment model in OpenFst format to filename." );
 DEFINE_bool(   lattice,     false,  "Write out the alignment lattices as an fst archive (.far)." );
 DEFINE_bool(   restrict,     true,  "Restrict links to M-1, 1-N during initialization." );
 int main( int argc, char* argv[] ){
@@ -243,6 +244,9 @@ int main( int argc, char* argv[] ){
   StdArc::Weight pthresh = FLAGS_pthresh==-99.0 ? LogWeight::Zero().Value() : FLAGS_pthresh;
   aligner.fsas[0].SetInputSymbols(aligner.isyms);
   aligner.fsas[0].SetOutputSymbols(aligner.isyms);
+  if( FLAGS_write_model.compare("") != 0 ){
+    cerr << "Writing alignment model in OpenFst format to file: " << FLAGS_write_model << endl;
+  }
   if( FLAGS_lattice==true )
     compileNBestFarArchive( &aligner, &aligner.fsas, FLAGS_ofile, pthresh, FLAGS_nbest, FLAGS_fb, FLAGS_penalize );
   else

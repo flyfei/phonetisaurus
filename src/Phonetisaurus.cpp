@@ -56,11 +56,6 @@ Phonetisaurus::Phonetisaurus( const char* _g2pmodel_file, bool _mbrdecode, float
     se   = "</s>";
     skip = "_";
     
-    skipSeqs.insert(eps);
-    skipSeqs.insert(sb);
-    skipSeqs.insert(se);
-    skipSeqs.insert(skip);
-    skipSeqs.insert("-");
     
     g2pmodel = StdVectorFst::Read( _g2pmodel_file );
 
@@ -68,10 +63,20 @@ Phonetisaurus::Phonetisaurus( const char* _g2pmodel_file, bool _mbrdecode, float
     tie  = isyms->Find(1); //The separator symbol is reserved for index 1
 
     osyms = (SymbolTable*)g2pmodel->OutputSymbols(); 
+    if( osyms->Find(eps)!=-1 )
+      skipSeqs.insert(osyms->Find(eps));
+    if( osyms->Find(sb)!=-1 )
+      skipSeqs.insert(osyms->Find(sb));
+    if( osyms->Find(se)!=-1 )
+      skipSeqs.insert(osyms->Find(se));
+    if( osyms->Find(skip)!=-1 )
+      skipSeqs.insert(osyms->Find(skip));
+    if( osyms->Find("-")!=-1 )
+      skipSeqs.insert(osyms->Find("-"));
     
     loadClusters( );
     
-    epsMapper = makeEpsMapper( );
+    //epsMapper = makeEpsMapper( );
     
     //We need make sure the g2pmodel is arcsorted
     ILabelCompare<StdArc> icomp;
@@ -112,7 +117,6 @@ StdVectorFst Phonetisaurus::makeEpsMapper( ){
      This can be used to remove unwanted symbols from the final 
      result, but in tests was 7x slower than manual removal
      via the FstPathFinder object.
-     */
     
     StdVectorFst mfst;
     mfst.AddState();
@@ -132,8 +136,9 @@ StdVectorFst Phonetisaurus::makeEpsMapper( ){
     ArcSort( &mfst, icomp );
     mfst.SetInputSymbols( osyms );
     mfst.SetOutputSymbols( osyms );
-    
-    return mfst;
+     */
+  StdVectorFst mfst;
+  return mfst;
 }
 
 StdVectorFst Phonetisaurus::entryToFSA( vector<string> entry ){
@@ -286,7 +291,8 @@ vector<PathData> Phonetisaurus::phoneticize( vector<string> entry, int nbest, in
     */
     RmEpsilon( &shortest );
     FstPathFinder pathfinder( skipSeqs );
-    pathfinder.findAllStrings( shortest );
+    //pathfinder.findAllStrings( shortest );
+    pathfinder.extract_all_paths( shortest );
     
     return pathfinder.paths;
 }

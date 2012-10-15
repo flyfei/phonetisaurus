@@ -55,7 +55,7 @@ public:
     float         ratio;
     vector<float> thetas;
     bool          mbrdecode;
-    set<string>   skipSeqs;
+    set<int>   skipSeqs;
     map<vector<string>, int>   clusters;
     //FST stuff
     StdVectorFst  *g2pmodel;
