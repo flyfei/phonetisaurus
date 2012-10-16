@@ -5,7 +5,7 @@ Josef Robert Novak
 
 Phonetisaurus: a WFST-based G2P Conversion toolkit
 
-Phonetisaurus is released under the BSD-3 license.
+Phonetisaurus is released under the BSD-2 license.
 
 Phonetisaurus contains 2 pieces of 3rd-party code,
  which are both located in the src/3rdparty directory,
@@ -15,7 +15,7 @@ Phonetisaurus contains 2 pieces of 3rd-party code,
   * UTF8-CPP:
     + http://utfcpp.sourceforge.net/
       which is released under a BSD-like/compatible license 
-      (see utf8.h header file for details)
+      (see src/3rdparty/utfcpp/utf8.h header file for details)
 
 Phonetisaurus also relies on the OpenFst library
   * http://www.openfst.org
