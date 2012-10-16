@@ -371,7 +371,7 @@ void M2MFstAligner::Sequences2FSTNoInit( VectorFst<LogArc>* fst, vector<string>*
   fst->SetFinal( ((seq1->size()+1)*(seq2->size()+1))-1, LogWeight::One() );
   //Unless seq1_del==true && seq2_del==true we will have unconnected states
   // thus we need to run connect to clean out these states
-  if( seq1_del==false or seq2_del==false )
+  if( seq1_del==false || seq2_del==false )
     Connect(fst);
   return;
 }
