@@ -32,13 +32,18 @@
 using namespace fst;
 
 
-void phoneticizeWord( 
+int phoneticizeWord(
 		     const char* g2pmodel_file, string testword, 
 		     int nbest, string sep, bool mbrdecoder, float alpha, float precision, float ratio, int order,
 		     int beam=500, int output_words=0 ){
     
   Phonetisaurus phonetisaurus( g2pmodel_file, mbrdecoder, alpha, precision, ratio, order );
-  
+
+  if(phonetisaurus.g2pmodel == NULL)
+  {
+	  return -1;
+  }
+
   vector<string>   entry = tokenize_entry( &testword, &sep, phonetisaurus.isyms );
 
   vector<PathData> paths = phonetisaurus.phoneticize( entry, nbest, beam );
@@ -55,7 +60,7 @@ void phoneticizeWord(
     }
   }
 
-  return;
+  return 0;
 }
 
 

@@ -37,7 +37,7 @@ FstPathFinder::FstPathFinder( ){
   band = 999999;
 }
 
-FstPathFinder::FstPathFinder( set<int> _skip, int _band ){
+FstPathFinder::FstPathFinder( set<int> _skip, unsigned int _band ){
   skip  = _skip;
   band  = _band;
 }
@@ -60,7 +60,7 @@ void FstPathFinder::_extract_paths( const VectorFst<StdArc>& ifst, StdArc::State
     cost = Times(cost, ifst.Final(id).Value());
     //We will almost always have unique nbest<10 so this is actually pretty efficient
     bool equals = false;
-    for( int i=0; i<paths.size(); i++ ){
+    for( unsigned int i=0; i<paths.size(); i++ ){
       //If the path is redundant, sum the probability mass
       if( equal( path.begin(), path.end(), paths[i].path.begin() ) ){
 	////This actually seems to make the results WORSE not better

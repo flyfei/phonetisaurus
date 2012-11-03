@@ -34,7 +34,7 @@
 #include <google/dense_hash_map>
 using namespace fst;
 
-typedef struct LabelDatum { int max, tot, lhs, rhs; bool lhsE, rhsE; };
+typedef struct LabelDatum { int max, tot, lhs, rhs; bool lhsE, rhsE; } LabelDatum;
 typedef google::dense_hash_map<LogArc::Label,LabelDatum> LabelData;
 
 string vec2str( vector<string> vec, string sep );

@@ -58,6 +58,9 @@ Phonetisaurus::Phonetisaurus( const char* _g2pmodel_file, bool _mbrdecode, float
     
     
     g2pmodel = StdVectorFst::Read( _g2pmodel_file );
+    if(g2pmodel == NULL) {
+	    return;
+    }
 
     isyms = (SymbolTable*)g2pmodel->InputSymbols(); 
     tie  = isyms->Find(1); //The separator symbol is reserved for index 1
@@ -220,7 +223,6 @@ int Phonetisaurus::_compute_thetas( int wlen ){
   //cout << "N: " << N << endl;
   //Theta0 is basically an insertion penalty
   // -1/T
-  float ip = -0.3;
   thetas.push_back( -1/T );
   for( int n=1; n<=order; n++ )
       thetas.push_back( 1.0/((N*T*precision) * (pow(ratio,(n-1)))) );
@@ -296,7 +298,7 @@ vector<PathData> Phonetisaurus::phoneticize( vector<string> entry, int nbest, in
     return pathfinder.paths;
 }
 
-bool Phonetisaurus::printPaths( vector<PathData> paths, int nbest, string correct, string word ){
+bool Phonetisaurus::printPaths( vector<PathData> paths, unsigned int nbest, string correct, string word ){
     /*
      Convenience function to print out a path vector.
      Will print only the first N unique entries.
@@ -305,7 +307,6 @@ bool Phonetisaurus::printPaths( vector<PathData> paths, int nbest, string correc
     set<string> seen;
     set<string>::iterator sit;
     
-    int numseen = 0;
     string onepath;
     size_t k;
     bool empty_path = true;

@@ -48,7 +48,7 @@ MBRDecoder::MBRDecoder( int _order, VectorFst<LogArc>* _lattice, float _alpha, v
   syms->AddSymbol("<sigma>");
   syms->AddSymbol("<rho>");
   syms->AddSymbol("<phi>");
-  for( int i=0; i<_lattice->InputSymbols()->NumSymbols(); i++ )
+  for( unsigned int i=0; i<_lattice->InputSymbols()->NumSymbols(); i++ )
     syms->AddSymbol(_lattice->InputSymbols()->Find(i));
   Relabel(_lattice, syms, syms);
   lattice = new VectorFst<LogArc>();
@@ -183,7 +183,7 @@ void MBRDecoder::build_decoders( ){
     mappers[i]->SetOutputSymbols(syms);
 
     //
-    //---Generate the order-N lattice--\\
+    //---Generate the order-N lattice---
     //
     //cout << "Lattice mapper compose..." << endl;
     Compose(*lattice, *mappers[i], latticeNs[i]);
@@ -195,7 +195,7 @@ void MBRDecoder::build_decoders( ){
     //latticeNs[i]->Write(fname);
 
     //
-    //---Compute the path-posterior N-gram probabilities---\\
+    //---Compute the path-posterior N-gram probabilities---
     //
     pathcounters[i]->SetInputSymbols(syms);
     pathcounters[i]->SetOutputSymbols(syms);
@@ -234,7 +234,7 @@ void MBRDecoder::countPaths( VectorFst<LogArc>* Psi, VectorFst<LogArc>* latticeN
   //cout << "done.." << endl;
   //MODIFIED FORWARD IMPL
   UF posteriors;
-  posteriors.set_empty_key(NULL);
+  posteriors.set_empty_key(0);
   //cout << "Top sorting..." << endl;
   TopSort(&result);
   vector<LogArc::Weight> alphas(result.NumStates()+1,LogArc::Weight::Zero());
@@ -259,8 +259,8 @@ void MBRDecoder::countPaths( VectorFst<LogArc>* Psi, VectorFst<LogArc>* latticeN
     size_t q = siter.Value();
     if( result.Final(q)!=LogArc::Weight::Zero() ){
       LogArc::Weight w = Times(alphas[q],result.Final(q));
-      //cout << "q: " << q << "  u[q]: " << syms->Find(agrams[q])      \
-      //   << "  a[q]: " << alphas[q] << "  F[q]: " << result.Final(q) \
+      //cout << "q: " << q << "  u[q]: " << syms->Find(agrams[q])
+      //   << "  a[q]: " << alphas[q] << "  F[q]: " << result.Final(q)
       //   << "  a[q]xF[q]: " << w << endl;
       posteriors[agrams[q]] = Plus(posteriors[agrams[q]],w);
     }
@@ -334,7 +334,7 @@ void MBRDecoder::countPaths( VectorFst<LogArc>* Psi, VectorFst<LogArc>* latticeN
 
 
 void MBRDecoder::build_right_pathcounters( ){
-  for( int i=0; i<ngrams.size(); i++ ){
+  for( unsigned int i=0; i<ngrams.size(); i++ ){
     set<vector<int> >::iterator ait;
     pathcounters[i]->AddState();
     pathcounters[i]->SetStart(0);
@@ -357,7 +357,7 @@ void MBRDecoder::build_right_pathcounters( ){
 }
 
 void MBRDecoder::build_left_pathcounters( ){
-  for( int i=0; i<ngrams.size(); i++ ){
+  for( unsigned int i=0; i<ngrams.size(); i++ ){
     set<vector<int> >::iterator ait;
     pathcounters[i]->AddState();
     pathcounters[i]->SetStart(0);
@@ -384,13 +384,13 @@ void MBRDecoder::build_ngram_cd_fsts( ){
     Parent function to build the individual order-N Ngram
     context-dependency transducers.
   */
-  for( int i=0; i<ngrams.size(); i++ ){
+  for( unsigned int i=0; i<ngrams.size(); i++ ){
     //Build the Ngram trees from the Ngram sets
     //cout << "starting cd...: " << i << endl;
     mappers[i]->AddState();
     mappers[i]->SetStart(0);
     set<vector<int> >::iterator it;
-    for( int j=0; j<=i; j++ ){
+    for( unsigned int j=0; j<=i; j++ ){
       for( it=ngrams[j].begin(); it!=ngrams[j].end(); it++ ){
 	vector<int> ngram = (*it);
 	//cout << "adding ngram..." << endl;
@@ -463,7 +463,9 @@ LogArc MBRDecoder::_get_arc( VectorFst<LogArc>* mapper, int i, vector<int> ngram
       }
     }
   }
-
+  //This should never be reached... just to temporarily
+  // satisfy -Wall...
+  return LogArc( 0, 0, LogArc::Weight::Zero(), 1 );
 }
 
 string MBRDecoder::_vec_to_string( const vector<int>* vec ){
@@ -473,7 +475,7 @@ string MBRDecoder::_vec_to_string( const vector<int>* vec ){
     Mainly used for constructing the Ngram CD transducers.
   */
   string label = "";
-  for( int i=0; i<vec->size(); i++ )
+  for( unsigned int i=0; i<vec->size(); i++ )
     label += syms->Find(vec->at(i));
   return label;
 }
@@ -630,12 +632,12 @@ void MBRDecoder::extract_ngrams( int state, vector<int> ngram ){
   // set of unique Ngrams.  Any Ngrams that have already been found will be ignored.
   if( ngram.size()>0 )
     for( int i=ngram.size(); i>=0; i-- )
-      for( int j=i; j<ngram.size(); j++ )
+      for( unsigned int j=i; j<ngram.size(); j++ )
 	ngrams[ngram.size()-j-1].insert( vector<int>(ngram.begin()+j, ngram.end()) );
 
   //If the size of the ngram vector/stack has grown to >= order, then pop the first/lowest
   // item currently in the vector.
-  if( ngram.size()>=order )
+  if( ngram.size()>=(unsigned int)order )
     ngram.erase(ngram.begin());
 
   //Recurse through the entire lattice.  We have to make a copy of 'ngram' before each
@@ -675,7 +677,7 @@ VectorFst<StdArc> MBRDecoder::count_ngrams( VectorFst<StdArc>* std_lattice, int 
   SymbolTable* syms = new SymbolTable("syms");
   syms->AddSymbol("<eps>");
   syms->AddSymbol("<sigma>");
-  for( int i=0; i<std_lattice->InputSymbols()->NumSymbols(); i++ )
+  for( unsigned int i=0; i<std_lattice->InputSymbols()->NumSymbols(); i++ )
     syms->AddSymbol(std_lattice->InputSymbols()->Find(i));
   Relabel(std_lattice, syms, syms);
   ArcSort(std_lattice,OLabelCompare<StdArc>());
@@ -691,15 +693,14 @@ VectorFst<StdArc> MBRDecoder::count_ngrams( VectorFst<StdArc>* std_lattice, int 
   counter->SetStart(start);
   counter->AddArc( start, StdArc( 1, 0, StdArc::Weight::One(), start ) );
   for( int i=1; i<=order; i++ ){
-    size_t state = counter->AddState();
-    for( int j=4; j<syms->NumSymbols(); j++ ){
+    for( unsigned int j=4; j<syms->NumSymbols(); j++ ){
       counter->AddArc( i-1, StdArc( j, j, StdArc::Weight::One(), i ) );
       counter->SetFinal( i, StdArc::Weight::One() );
     }
   }
   size_t final = counter->NumStates()-1;
   counter->AddArc( final, StdArc( 1, 0, StdArc::Weight::One(), final ) );
-  for( int i=1; i<final; i++ )
+  for( unsigned int i=1; i<final; i++ )
     counter->AddArc( i, StdArc( 1, 0, StdArc::Weight::One(), final ) );
   //counter->SetFinal( final, StdArc::Weight::One() );
   counter->SetInputSymbols(syms);

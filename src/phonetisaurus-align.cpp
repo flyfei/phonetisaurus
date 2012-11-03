@@ -76,7 +76,7 @@ void write_alignments( M2MFstAligner* aligner, string ofile_name, StdArc::Weight
   LatticePruner pruner( aligner->penalties, threshold, nbest, fb, penalize );
 
   ofstream ofile(ofile_name.c_str());
-  for( int i=0; i<aligner->fsas.size(); i++ ){
+  for( unsigned int i=0; i<aligner->fsas.size(); i++ ){
     //Map to Tropical semiring
     VectorFst<StdArc>* tfst = new VectorFst<StdArc>();
     Map(aligner->fsas.at(i), tfst, LogToStdMapper());
@@ -101,8 +101,8 @@ void write_alignments( M2MFstAligner* aligner, string ofile_name, StdArc::Weight
       paths = pathfinder.paths;
     }
 
-    for( int j=0; j<paths.size(); j++ ){
-	for( int k=0; k<paths[j].path.size(); k++ ){
+    for( unsigned int j=0; j<paths.size(); j++ ){
+	for( unsigned int k=0; k<paths[j].path.size(); k++ ){
 	  string sym = aligner->isyms->Find(paths[j].path[k]);
 	  if( ofile )
 	    ofile << sym;
@@ -148,7 +148,7 @@ void compileNBestFarArchive( M2MFstAligner* aligner, vector<VectorFst<LogArc> > 
   //Build us a lattice pruner
   LatticePruner pruner( aligner->penalties, threshold, nbest, fb, penalize );
 
-  for( int i=0; i < fsts->size(); i++ ){
+  for( unsigned int i=0; i < fsts->size(); i++ ){
     //There has got to be a more efficient way to do this!
     VectorFst<StdArc>* tfst = new VectorFst<StdArc>();
     VectorFst<LogArc>* lfst = new VectorFst<LogArc>();
@@ -168,9 +168,9 @@ void compileNBestFarArchive( M2MFstAligner* aligner, vector<VectorFst<LogArc> > 
     //  The .far result here will be identical to the non-lattice 'write_alignments()'.
     Push<LogArc, REWEIGHT_TO_FINAL>(*lfst, pfst, kPushWeights);
     for( StateIterator<VectorFst<LogArc> > siter(*pfst); !siter.Done(); siter.Next() ){
-      size_t i = siter.Value();
-      if( pfst->Final(i)!=LogArc::Weight::Zero() ){
-        pfst->SetFinal(i,LogArc::Weight::One());
+      size_t v = siter.Value();
+      if( pfst->Final(v)!=LogArc::Weight::Zero() ){
+        pfst->SetFinal(v,LogArc::Weight::One());
       }
     }
 
@@ -182,7 +182,10 @@ void compileNBestFarArchive( M2MFstAligner* aligner, vector<VectorFst<LogArc> > 
     //Write the final result to the FARchive
     far_writer->Add(key_prefix + key + key_suffix, *ffst);
     //Cleanup the temporary FSTs
-    delete lfst, tfst, pfst, ffst;
+    delete lfst;
+    delete tfst;
+    delete pfst;
+    delete ffst;
   }
   //Cleanup the archive writer
   delete far_writer;

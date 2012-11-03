@@ -26,12 +26,12 @@
 # STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) 
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED 
 # OF THE POSSIBILITY OF SUCH DAMAGE.
-CC=g++
+CC=g++ -Wall
 LIBS=-lfst -ldl -lm
 OUT=../phonetisaurus-g2p ../phonetisaurus-align ../phonetisaurus-arpa2fst
 TMP=*.o
 CFLAGS ?= -O2
-THIRD_PARTIES_INCLUDE ?= -I3rdparty/sparsehash -I3rdparty/utfcpp
+THIRD_PARTIES_INCLUDE ?= -I3rdparty
 EXTRA=$(CFLAGS) $(THIRD_PARTIES_INCLUDE) $(CXXFLAGS) $(CPPFLAGS) 
 
 POBJS=Phonetisaurus.o FstPathFinder.o MBRDecoder.o LatticePruner.o util.o
@@ -52,4 +52,4 @@ all: $(OUT)
 	$(CC) $(EXTRA) $(LDFLAGS) Arpa2Fst.o util.o phonetisaurus-arpa2fst.cpp -o ../phonetisaurus-arpa2fst $(LIBS)
 
 clean:
-	rm $(OUT) $(TMP)
+	$(RM) $(OUT) $(TMP)

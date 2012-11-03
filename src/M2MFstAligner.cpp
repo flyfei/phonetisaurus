@@ -37,7 +37,7 @@ M2MFstAligner::M2MFstAligner( ){
   //Default constructor
 }
 
-M2MFstAligner::M2MFstAligner( bool _seq1_del, bool _seq2_del, int _seq1_max, int _seq2_max, 
+M2MFstAligner::M2MFstAligner( bool _seq1_del, bool _seq2_del, unsigned int _seq1_max, unsigned int _seq2_max, 
 			      string _seq1_sep, string _seq2_sep, string _s1s2_sep, 
 			      string _eps, string _skip, bool _penalize, bool _penalize_em, bool _restrict ){
   //Base constructor.  Determine whether or not to allow deletions in seq1 and seq2
@@ -73,7 +73,7 @@ M2MFstAligner::M2MFstAligner( bool _seq1_del, bool _seq2_del, int _seq1_max, int
   isyms->AddSymbol( model_params );
   total     = LogWeight::Zero();
   prevTotal = LogWeight::Zero();
-  penalties.set_empty_key(NULL);
+  penalties.set_empty_key(0);
 }
 
 M2MFstAligner::M2MFstAligner( string _model_file, bool _penalize, bool _penalize_em, bool _restrict  ){
@@ -137,7 +137,7 @@ void M2MFstAligner::expectation( ){
     Here we compute the arc posteriors.  This routine is almost 
     fun to implement in the FST paradigm.
   */
-  for( int i=0; i<fsas.size(); i++ ){
+  for( unsigned int i=0; i<fsas.size(); i++ ){
     //Compute Forward and Backward probabilities
     ShortestDistance( fsas.at(i), &alpha );
     ShortestDistance( fsas.at(i), &beta, true );
@@ -180,7 +180,7 @@ float M2MFstAligner::maximization( bool lastiter ){
     (*it).second = LogWeight::Zero();
   }
 
-  for( int i=0; i<fsas.size(); i++ ){
+  for( unsigned int i=0; i<fsas.size(); i++ ){
     for( StateIterator<VectorFst<LogArc> > siter(fsas[i]); !siter.Done(); siter.Next() ){
       LogArc::StateId q = siter.Value();
       for( MutableArcIterator<VectorFst<LogArc> > aiter(&fsas[i], q); !aiter.Done(); aiter.Next() ){
@@ -224,14 +224,14 @@ void M2MFstAligner::Sequences2FST( VectorFst<LogArc>* fst, vector<string>* seq1,
      like Japanese where there is a distinct imbalance in the seq1->seq2 length correspondences.
   */
   int istate=0; int ostate=0;
-  for( int i=0; i<=seq1->size(); i++ ){
-    for( int j=0; j<=seq2->size(); j++ ){
+  for( unsigned int i=0; i<=seq1->size(); i++ ){
+    for( unsigned int j=0; j<=seq2->size(); j++ ){
       fst->AddState();
       istate = i*(seq2->size()+1)+j;
 
       //Epsilon arcs for seq1
       if( seq1_del==true )
-	for( int l=1; l<=seq2_max; l++ ){
+	for( unsigned int l=1; l<=seq2_max; l++ ){
 	  if( j+l<=seq2->size() ){
 	    vector<string> subseq2( seq2->begin()+j, seq2->begin()+j+l );
 	    int is = isyms->AddSymbol(skip+s1s2_sep+vec2str(subseq2, seq2_sep));
@@ -250,7 +250,7 @@ void M2MFstAligner::Sequences2FST( VectorFst<LogArc>* fst, vector<string>* seq1,
 
       //Epsilon arcs for seq2
       if( seq2_del==true )
-	for( int k=1; k<=seq1_max; k++ ){
+	for( unsigned int k=1; k<=seq1_max; k++ ){
 	  if( i+k<=seq1->size() ){
 	    vector<string> subseq1( seq1->begin()+i, seq1->begin()+i+k );
 	    int is = isyms->AddSymbol(vec2str(subseq1, seq1_sep)+s1s2_sep+skip);
@@ -268,8 +268,8 @@ void M2MFstAligner::Sequences2FST( VectorFst<LogArc>* fst, vector<string>* seq1,
 	}
 
       //All the other arcs
-      for( int k=1; k<=seq1_max; k++ ){
-	for( int l=1; l<=seq2_max; l++ ){
+      for( unsigned int k=1; k<=seq1_max; k++ ){
+	for( unsigned int l=1; l<=seq2_max; l++ ){
 	  if( i+k<=seq1->size() && j+l<=seq2->size() ){
 	    vector<string> subseq1( seq1->begin()+i, seq1->begin()+i+k );
 	    string s1 = vec2str(subseq1, seq1_sep);
@@ -303,7 +303,7 @@ void M2MFstAligner::Sequences2FST( VectorFst<LogArc>* fst, vector<string>* seq1,
   fst->SetFinal( ((seq1->size()+1)*(seq2->size()+1))-1, LogWeight::One() );
   //Unless seq1_del==true && seq2_del==true we will have unconnected states
   // thus we need to run connect to clean out these states
-  if( seq1_del==false or seq2_del==false )
+  if( seq1_del==false || seq2_del==false )
     Connect(fst);
   return;
 }
@@ -317,14 +317,14 @@ void M2MFstAligner::Sequences2FSTNoInit( VectorFst<LogArc>* fst, vector<string>*
      best results anyway, so it probably doesn't matter.
   */
   int istate=0; int ostate=0;
-  for( int i=0; i<=seq1->size(); i++ ){
-    for( int j=0; j<=seq2->size(); j++ ){
+  for( unsigned int i=0; i<=seq1->size(); i++ ){
+    for( unsigned int j=0; j<=seq2->size(); j++ ){
       fst->AddState();
       istate = i*(seq2->size()+1)+j;
 
       //Epsilon arcs for seq1
       if( seq1_del==true )
-	for( int l=1; l<=seq2_max; l++ ){
+	for( unsigned int l=1; l<=seq2_max; l++ ){
 	  if( j+l<=seq2->size() ){
 	    vector<string> subseq2( seq2->begin()+j, seq2->begin()+j+l );
 	    int is = isyms->Find(skip+s1s2_sep+vec2str(subseq2, seq2_sep));
@@ -336,7 +336,7 @@ void M2MFstAligner::Sequences2FSTNoInit( VectorFst<LogArc>* fst, vector<string>*
 
       //Epsilon arcs for seq2
       if( seq2_del==true )
-	for( int k=1; k<=seq1_max; k++ ){
+	for( unsigned int k=1; k<=seq1_max; k++ ){
 	  if( i+k<=seq1->size() ){
 	    vector<string> subseq1( seq1->begin()+i, seq1->begin()+i+k );
 	    int is = isyms->Find(vec2str(subseq1, seq1_sep)+s1s2_sep+skip);
@@ -347,8 +347,8 @@ void M2MFstAligner::Sequences2FSTNoInit( VectorFst<LogArc>* fst, vector<string>*
 	}
 
       //All the other arcs
-      for( int k=1; k<=seq1_max; k++ ){
-	for( int l=1; l<=seq2_max; l++ ){
+      for( unsigned int k=1; k<=seq1_max; k++ ){
+	for( unsigned int l=1; l<=seq2_max; l++ ){
 	  if( i+k<=seq1->size() && j+l<=seq2->size() ){
 	    vector<string> subseq1( seq1->begin()+i, seq1->begin()+i+k );
 	    string s1 = vec2str(subseq1, seq1_sep);

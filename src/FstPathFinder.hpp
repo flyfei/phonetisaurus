@@ -58,7 +58,7 @@ class FstPathFinder{
   */
 
 public:
-  int      band;   //The 'band' parameter is basically a secondary
+  unsigned int band;   //The 'band' parameter is basically a secondary
                    // pruning heuristic.  It will stop traversining
                    // the N-best lattice as soon as paths.size()>band
                    //NOTE: if we have 4 hypotheses:  
@@ -79,7 +79,7 @@ public:
   vector<PathData> paths;
 
   FstPathFinder( ); 
-  FstPathFinder( set<int> _skip, int _band=999999 );
+  FstPathFinder( set<int> _skip, unsigned int _band=999999 );
 
   void extract_all_paths( const VectorFst<StdArc>& ifst );
 

@@ -137,7 +137,8 @@ void LatticePruner::_forward_backward( VectorFst<StdArc>* fst ){
 
   Map(*pfst, fst, LogToStdMapper()); 
 
-  delete lfst, pfst;
+  delete lfst;
+  delete pfst;
   return;
 }
 

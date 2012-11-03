@@ -61,8 +61,8 @@ public:
   //Basics declarations
   bool   seq1_del;
   bool   seq2_del;
-  int    seq1_max;
-  int    seq2_max;
+  unsigned int    seq1_max;
+  unsigned int    seq2_max;
   string seq1_sep;
   string seq2_sep;
   string s1s2_sep;
@@ -92,7 +92,7 @@ public:
   //Constructors
   M2MFstAligner( );
   //Train from scratch using a dictionary
-  M2MFstAligner( bool _seq1_del, bool _seq2_del, int _seq1_max, int _seq2_max, 
+  M2MFstAligner( bool _seq1_del, bool _seq2_del, unsigned int _seq1_max, unsigned int _seq2_max, 
 		 string _seq1_sep, string _seq2_sep, string _s1s2_sep,
 		 string _eps, string _skip, bool _penalize, bool _penalize_em, bool _restrict );
   //We've already got a model to go on
