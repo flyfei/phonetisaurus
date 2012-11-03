@@ -26,7 +26,7 @@
 # STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) 
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED 
 # OF THE POSSIBILITY OF SUCH DAMAGE.
-CC=g++ -Wall
+CC=g++
 LIBS=-lfst -ldl -lm
 OUT=../phonetisaurus-g2p ../phonetisaurus-align ../phonetisaurus-arpa2fst
 TMP=*.o
