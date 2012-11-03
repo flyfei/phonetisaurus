@@ -31,7 +31,7 @@ LIBS=-lfst -ldl -lm
 OUT=../phonetisaurus-g2p ../phonetisaurus-align ../phonetisaurus-arpa2fst
 TMP=*.o
 CFLAGS ?= -O2
-THIRD_PARTIES_INCLUDE ?= -I3rdparty
+THIRD_PARTIES_INCLUDE ?= -I3rdparty/sparsehash -I3rdparty/utfcpp
 EXTRA=$(CFLAGS) $(THIRD_PARTIES_INCLUDE) $(CXXFLAGS) $(CPPFLAGS) 
 
 POBJS=Phonetisaurus.o FstPathFinder.o MBRDecoder.o LatticePruner.o util.o
