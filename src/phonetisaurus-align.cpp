@@ -36,9 +36,10 @@
 using namespace fst;
 
 
-void load_input_file( M2MFstAligner* aligner, string input_file, string delim, string s1_char_delim, string s2_char_delim ){
+int load_input_file( M2MFstAligner* aligner, string input_file, string delim, string s1_char_delim, string s2_char_delim ){
   ifstream infile( input_file.c_str() );
   string line;
+  int lines = 0;
   cerr << "Loading input file: " << input_file << endl;
 
   if( infile.is_open() ){
@@ -48,14 +49,22 @@ void load_input_file( M2MFstAligner* aligner, string input_file, string delim, s
         continue;
       vector<string> tokens = tokenize_utf8_string( &line, &delim );
       vector<string> seq1   = tokenize_utf8_string( &tokens.at(0), &s1_char_delim );
-      vector<string> seq2   = tokenize_utf8_string( &tokens.at(1), &s2_char_delim );
+      vector<string> seq2;
+      if(tokens.size()>1){
+        seq2 = tokenize_utf8_string( &tokens.at(1), &s2_char_delim );
+      }
       aligner->entry2alignfst( seq1, seq2 );
+      lines++;
     }
     infile.close();
   }
+  else{
+    cerr << "Failed to open input file: " << input_file << endl;
+    return -1;
+  }
   //aligner->computePenalties( );
 
-  return;
+  return lines;
 }
 
 void write_alignments( M2MFstAligner* aligner, string ofile_name, StdArc::Weight threshold, int nbest, bool fb, bool penalize ){
@@ -231,7 +240,12 @@ int main( int argc, char* argv[] ){
 			FLAGS_eps, FLAGS_skip, FLAGS_penalize, FLAGS_penalize_em, FLAGS_restrict
 			 );
 
-  load_input_file( &aligner, FLAGS_input, FLAGS_delim, FLAGS_s1_char_delim, FLAGS_s2_char_delim );
+  switch(load_input_file( &aligner, FLAGS_input, FLAGS_delim, FLAGS_s1_char_delim, FLAGS_s2_char_delim )){
+  case 0:
+	  cerr << "Please provide a valid input file." << endl;
+  case -1:
+	  return -1;
+  }
 
   cerr << "Starting EM..." << endl;
   aligner.maximization(false);
