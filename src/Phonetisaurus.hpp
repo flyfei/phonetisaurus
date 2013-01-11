@@ -73,7 +73,7 @@ public:
     
     vector<PathData> phoneticize( vector<string> entry, int nbest, int beam=500 );
 
-    bool printPaths( vector<PathData> paths, unsigned int nbest, string correct="", string word="" );
+    bool printPaths( vector<PathData> paths, unsigned int nbest, string correct, string word );
     
 private:
     void loadClusters( );

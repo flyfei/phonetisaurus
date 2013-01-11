@@ -49,7 +49,7 @@ int phoneticizeWord(
   vector<PathData> paths = phonetisaurus.phoneticize( entry, nbest, beam );
 
   if( output_words==0 ){
-    while( phonetisaurus.printPaths( paths, nbest )==true ){
+    while( phonetisaurus.printPaths( paths, nbest, "", "" )==true ){
       nbest++;
       paths = phonetisaurus.phoneticize( entry, nbest, beam );
     }
@@ -100,7 +100,7 @@ void phoneticizeTestSet( const char* g2pmodel_file, string testset_file,
       vector<PathData> paths = phonetisaurus.phoneticize( entry, nbest, beam=beam );
       int nbest_new = nbest;
       if( output_words==0){
-	while( phonetisaurus.printPaths( paths, nbest_new, pron )==true ){
+	while( phonetisaurus.printPaths( paths, nbest_new, pron, "" )==true ){
 	  nbest_new++;
 	  paths = phonetisaurus.phoneticize( entry, nbest_new, beam );
 	}
@@ -132,7 +132,6 @@ DEFINE_int32(  order,      6, "The N-gram order for the MBR decoder.");
 DEFINE_double( prec,    0.85, "The N-gram precision factor for the LMBR decoder.");
 DEFINE_double( ratio,   0.72, "The N-gram ratio factor for the LMBR decoder.");
 
-
 int main( int argc, char **argv ) {
   string usage = "phonetisaurus-g2p decoder.\n\n Usage: ";
   set_new_handler(FailedNewHandler);
@@ -150,7 +149,7 @@ int main( int argc, char **argv ) {
     phoneticizeWord(    
 		    FLAGS_model.c_str(), FLAGS_input, FLAGS_nbest, 
 		    FLAGS_sep, FLAGS_mbr, FLAGS_alpha, FLAGS_prec, 
-		    FLAGS_ratio, FLAGS_order, FLAGS_beam, FLAGS_words 
+		    FLAGS_ratio, FLAGS_order, FLAGS_beam, FLAGS_words
 			);
   }
   exit(0);

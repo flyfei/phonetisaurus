@@ -104,3 +104,32 @@ vector<string> tokenize_entry( string* testword, string* sep, SymbolTable* syms 
   return entry;
 }
 
+#ifdef __MACH__
+timespec get_time( ){
+  clock_serv_t cclock;
+  mach_timespec_t mts;
+  host_get_clock_service(mach_host_self(), REALTIME_CLOCK, &cclock);
+  clock_get_time(cclock, &mts);
+
+  timespec ts = {mts.tv_sec, mts.tv_nsec};
+  return ts;
+}
+#else
+timespec get_time( ){
+  timespec ts;
+  clock_gettime(CLOCK_REALTIME, &ts);
+  return ts;
+}
+#endif
+
+timespec diff(timespec start, timespec end){
+  timespec temp;
+  if ((end.tv_nsec-start.tv_nsec)<0) {
+    temp.tv_sec = end.tv_sec-start.tv_sec-1;
+    temp.tv_nsec = 1000000000+end.tv_nsec-start.tv_nsec;
+  } else {
+    temp.tv_sec = end.tv_sec-start.tv_sec;
+    temp.tv_nsec = end.tv_nsec-start.tv_nsec;
+  }
+  return temp;
+}

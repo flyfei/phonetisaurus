@@ -234,7 +234,7 @@ void MBRDecoder::countPaths( VectorFst<LogArc>* Psi, VectorFst<LogArc>* latticeN
   //cout << "done.." << endl;
   //MODIFIED FORWARD IMPL
   UF posteriors;
-  posteriors.set_empty_key(0);
+  posteriors.set_empty_key(NULL);
   //cout << "Top sorting..." << endl;
   TopSort(&result);
   vector<LogArc::Weight> alphas(result.NumStates()+1,LogArc::Weight::Zero());
@@ -465,7 +465,7 @@ LogArc MBRDecoder::_get_arc( VectorFst<LogArc>* mapper, int i, vector<int> ngram
   }
   //This should never be reached... just to temporarily
   // satisfy -Wall...
-  return LogArc( 0, 0, LogArc::Weight::Zero(), 1 );
+  //return LogArc( 0, 0, LogArc::Weight::Zero(), 1 );
 }
 
 string MBRDecoder::_vec_to_string( const vector<int>* vec ){
@@ -682,6 +682,7 @@ VectorFst<StdArc> MBRDecoder::count_ngrams( VectorFst<StdArc>* std_lattice, int 
   Relabel(std_lattice, syms, syms);
   ArcSort(std_lattice,OLabelCompare<StdArc>());
   ArcMap(std_lattice, RmWeightMapper<StdArc>());
+  //cout << "rmweights ready to iterate" << endl;
   for( StateIterator<VectorFst<StdArc> > siter(*std_lattice); !siter.Done(); siter.Next() ){
     size_t i = siter.Value();
     if( std_lattice->Final(i)!=StdArc::Weight::Zero() )
@@ -692,13 +693,16 @@ VectorFst<StdArc> MBRDecoder::count_ngrams( VectorFst<StdArc>* std_lattice, int 
   size_t start = counter->AddState();
   counter->SetStart(start);
   counter->AddArc( start, StdArc( 1, 0, StdArc::Weight::One(), start ) );
+  //cout << "building counters" << endl;
   for( int i=1; i<=order; i++ ){
+    size_t state = counter->AddState();
     for( unsigned int j=4; j<syms->NumSymbols(); j++ ){
       counter->AddArc( i-1, StdArc( j, j, StdArc::Weight::One(), i ) );
       counter->SetFinal( i, StdArc::Weight::One() );
     }
   }
   size_t final = counter->NumStates()-1;
+  //cout << "adding final arcs" << endl;
   counter->AddArc( final, StdArc( 1, 0, StdArc::Weight::One(), final ) );
   for( unsigned int i=1; i<final; i++ )
     counter->AddArc( i, StdArc( 1, 0, StdArc::Weight::One(), final ) );

@@ -36,7 +36,7 @@
 using namespace fst;
 
 
-int load_input_file( M2MFstAligner* aligner, string input_file, string delim, string s1_char_delim, string s2_char_delim ){
+int load_input_file( M2MFstAligner* aligner, string input_file, string delim, string s1_char_delim, string s2_char_delim, bool init=false ){
   ifstream infile( input_file.c_str() );
   string line;
   int lines = 0;
@@ -53,7 +53,10 @@ int load_input_file( M2MFstAligner* aligner, string input_file, string delim, st
       if(tokens.size()>1){
         seq2 = tokenize_utf8_string( &tokens.at(1), &s2_char_delim );
       }
-      aligner->entry2alignfst( seq1, seq2 );
+      if( init==false )
+	aligner->entry2alignfst( seq1, seq2 );
+      else
+	aligner->entry2alignfstnoinit( seq1, seq2, 1, line );
       lines++;
     }
     infile.close();
@@ -151,13 +154,17 @@ void compileNBestFarArchive( M2MFstAligner* aligner, vector<VectorFst<LogArc> > 
   string key        = "";
   char   keybuf[16];
   int32  generate_keys = 7; //Suitable for up to several million lattices
-
+  bool   set_syms = false; //Have we set the isyms successfully yet??
   //Build us a FarWriter to compile the archive
   FarWriter<StdArc> *far_writer = FarWriter<StdArc>::Create(far_name, FAR_DEFAULT);
   //Build us a lattice pruner
   LatticePruner pruner( aligner->penalties, threshold, nbest, fb, penalize );
 
   for( unsigned int i=0; i < fsts->size(); i++ ){
+    //Maybe the alignment params did not permit any 
+    // valid alignment.  If so, do not bother with additional
+    // post-processing, don't add to the archive, do not pass go!
+    if( fsts->at(i).NumStates()==0 ) continue;
     //There has got to be a more efficient way to do this!
     VectorFst<StdArc>* tfst = new VectorFst<StdArc>();
     VectorFst<LogArc>* lfst = new VectorFst<LogArc>();
@@ -183,13 +190,26 @@ void compileNBestFarArchive( M2MFstAligner* aligner, vector<VectorFst<LogArc> > 
       }
     }
 
+    //Maybe we pruned everything.  If so, don't add this to the archive
+    // as the empty fst will cause ngramcount to fail.
+    if( pfst->NumStates()==0 ) continue;
+
+      
     //Finally map back to the Tropical semiring for the last time
     Map(*pfst, ffst, LogToStdMapper());
 
+    if( set_syms==false ){
+      ffst->SetInputSymbols(aligner->isyms);
+      ffst->SetOutputSymbols(aligner->isyms);
+      set_syms = true;
+    }
+
     sprintf(keybuf, "%0*d", generate_keys, i+1);
     key = keybuf;
+
     //Write the final result to the FARchive
     far_writer->Add(key_prefix + key + key_suffix, *ffst);
+
     //Cleanup the temporary FSTs
     delete lfst;
     delete tfst;
@@ -216,7 +236,7 @@ DEFINE_string( eps,       "<eps>",  "Epsilon symbol." );
 DEFINE_string( skip,          "_",  "Skip token used to represent null transitions.  Distinct from epsilon." );
 DEFINE_bool(   penalize,     true,  "Penalize scores." );
 DEFINE_bool(   penalize_em, false,  "Penalize links during EM training." );
-DEFINE_bool(   load_model,          "",  "Load a pre-trained model for use." );
+DEFINE_bool(   load_model,  false,  "Load a pre-trained model for use." );
 DEFINE_string( ofile,          "",  "Output file to write the aligned dictionary to." );
 DEFINE_bool(   mbr,         false,  "Use the LMBR decoder (not yet implemented)." );
 DEFINE_bool(   fb,          false,  "Use forward-backward pruning for the alignment lattices." );
@@ -226,6 +246,7 @@ DEFINE_int32(  nbest,           1,  "Output the N-best alignments given the mode
 DEFINE_double( pthresh,       -99,  "Pruning threshold.  Use to prune unlikely N-best candidates when using multiple alignments.");
 DEFINE_string( s1_char_delim,  "",  "Sequence one input delimeter." );
 DEFINE_string( s2_char_delim, " ",  "Sequence two input delimeter." );
+DEFINE_string( model_file,     "",  "FST-format alignment model to load." );
 DEFINE_string( write_model,    "",  "Write out the alignment model in OpenFst format to filename." );
 DEFINE_bool(   lattice,     false,  "Write out the alignment lattices as an fst archive (.far)." );
 DEFINE_bool(   restrict,     true,  "Restrict links to M-1, 1-N during initialization." );
@@ -233,38 +254,46 @@ int main( int argc, char* argv[] ){
   string usage = "phonetisaurus-align dictionary aligner.\n\n Usage: ";
   set_new_handler(FailedNewHandler);
   SetFlags(usage.c_str(), &argc, &argv, false );
+  M2MFstAligner aligner;
+  if( FLAGS_load_model==true ){
+    aligner = *(new M2MFstAligner( FLAGS_model_file, FLAGS_penalize, FLAGS_penalize_em, FLAGS_restrict ));
+    switch(load_input_file( &aligner, FLAGS_input, FLAGS_delim, FLAGS_s1_char_delim, FLAGS_s2_char_delim, FLAGS_load_model )){
+    case 0:
+      cerr << "Please provide a valid input file." << endl;
+    case -1:
+      return -1;
+    }
+  }else{
+    aligner = *(new M2MFstAligner( 
+	    FLAGS_seq1_del, FLAGS_seq2_del, FLAGS_seq1_max, FLAGS_seq2_max, 
+	    FLAGS_seq1_sep, FLAGS_seq2_sep, FLAGS_s1s2_sep, 
+	    FLAGS_eps, FLAGS_skip, FLAGS_penalize, FLAGS_penalize_em, FLAGS_restrict
+				   ));
+    switch(load_input_file( &aligner, FLAGS_input, FLAGS_delim, FLAGS_s1_char_delim, FLAGS_s2_char_delim, FLAGS_load_model )){
+    case 0:
+      cerr << "Please provide a valid input file." << endl;
+    case -1:
+      return -1;
+    }
 
-  M2MFstAligner aligner( 
-			FLAGS_seq1_del, FLAGS_seq2_del, FLAGS_seq1_max, FLAGS_seq2_max, 
-			FLAGS_seq1_sep, FLAGS_seq2_sep, FLAGS_s1s2_sep, 
-			FLAGS_eps, FLAGS_skip, FLAGS_penalize, FLAGS_penalize_em, FLAGS_restrict
-			 );
+    cerr << "Starting EM..." << endl;
+    aligner.maximization(false);
+    cerr << "Finished first iter..." << endl;
+    for( int i=1; i<=FLAGS_iter; i++ ){
+      cerr << "Iteration: " << i << " Change: ";
+      aligner.expectation();
+      cerr << aligner.maximization(false) << endl;
+    }
 
-  switch(load_input_file( &aligner, FLAGS_input, FLAGS_delim, FLAGS_s1_char_delim, FLAGS_s2_char_delim )){
-  case 0:
-	  cerr << "Please provide a valid input file." << endl;
-  case -1:
-	  return -1;
-  }
-
-  cerr << "Starting EM..." << endl;
-  aligner.maximization(false);
-  cerr << "Finished first iter..." << endl;
-  for( int i=1; i<=FLAGS_iter; i++ ){
-    cerr << "Iteration: " << i << " Change: ";
+    cerr << "Last iteration: " << endl;
     aligner.expectation();
-    cerr << aligner.maximization(false) << endl;
+    aligner.maximization(true);
   }
-
-  cerr << "Last iteration: " << endl;
-  aligner.expectation();
-  aligner.maximization(true);
 
   StdArc::Weight pthresh = FLAGS_pthresh==-99.0 ? LogWeight::Zero().Value() : FLAGS_pthresh;
-  aligner.fsas[0].SetInputSymbols(aligner.isyms);
-  aligner.fsas[0].SetOutputSymbols(aligner.isyms);
   if( FLAGS_write_model.compare("") != 0 ){
     cerr << "Writing alignment model in OpenFst format to file: " << FLAGS_write_model << endl;
+    aligner.write_model(FLAGS_write_model);
   }
   if( FLAGS_lattice==true )
     compileNBestFarArchive( &aligner, &aligner.fsas, FLAGS_ofile, pthresh, FLAGS_nbest, FLAGS_fb, FLAGS_penalize );

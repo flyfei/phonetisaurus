@@ -28,35 +28,24 @@
 # OF THE POSSIBILITY OF SUCH DAMAGE.
 CC=g++
 LIBS=-lfst -ldl -lm
-OUT=../phonetisaurus-g2p ../phonetisaurus-align ../phonetisaurus-arpa2fst ../phonetisaurus-arpa2wfst-omega ../phonetisaurus-g2p-omega
+OUT=phonetisaurus-perp phonetisaurus-e2f
 TMP=*.o
 CFLAGS ?= -O2
-THIRD_PARTIES_INCLUDE ?= -I3rdparty/sparsehash -I3rdparty/utfcpp
+THIRD_PARTIES_INCLUDE ?= -I../src/3rdparty/sparsehash -I../src/3rdparty/utfcpp -I../src
 EXTRA=$(CFLAGS) $(THIRD_PARTIES_INCLUDE) $(CXXFLAGS) $(CPPFLAGS) 
-
-POBJS=Phonetisaurus.o FstPathFinder.o MBRDecoder.o LatticePruner.o util.o
-MOBJS=M2MFstAligner.o FstPathFinder.o MBRDecoder.o LatticePruner.o util.o
-OOBJS=PhonetisaurusOmega.o PhonetisaurusE2F.o util.o FstPathFinder.o LatticePruner.o MBRDecoder.o
 
 all: $(OUT)
 
 %.o: %.cpp
 	$(CC) $(EXTRA) -c $(<) -o $(@)
 
-../phonetisaurus-align: $(MOBJS) phonetisaurus-align.cpp
-	$(CC) $(EXTRA) $(LDFLAGS) $(MOBJS) phonetisaurus-align.cpp -o ../phonetisaurus-align $(LIBS)
+phonetisaurus-perp: ../src/MBRDecoder.o ../src/PhonetisaurusE2F.o ../src/PhonetisaurusOmega.o ../src/FstPathFinder.o ../src/util.o phonetisaurus-perp.cpp
+	$(CC) $(EXTRA) $(LDFLAGS) ../src/MBRDecoder.o ../src/PhonetisaurusE2F.o ../src/PhonetisaurusOmega.o ../src/FstPathFinder.o ../src/util.o phonetisaurus-perp.cpp -o phonetisaurus-perp $(LIBS)
 
-../phonetisaurus-g2p: $(POBJS) phonetisaurus-g2p.cpp
-	$(CC) $(EXTRA) $(LDFLAGS) $(POBJS) phonetisaurus-g2p.cpp -o ../phonetisaurus-g2p $(LIBS)
+phonetisaurus-e2f: ../src/PhonetisaurusE2F.o ../src/util.o phonetisaurus-e2f.cpp
+	$(CC) $(EXTRA) $(LDFLAGS) ../src/PhonetisaurusE2F.o ../src/util.o phonetisaurus-e2f.cpp -o phonetisaurus-e2f $(LIBS)
 
-../phonetisaurus-arpa2fst: Arpa2Fst.o util.o phonetisaurus-arpa2fst.cpp
-	$(CC) $(EXTRA) $(LDFLAGS) Arpa2Fst.o util.o phonetisaurus-arpa2fst.cpp -o ../phonetisaurus-arpa2fst $(LIBS)
-
-../phonetisaurus-arpa2wfst-omega: ARPA2WFST.o util.o phonetisaurus-arpa2wfst-omega.cpp
-	$(CC) $(EXTRA) $(LDFLAGS) ARPA2WFST.o util.o phonetisaurus-arpa2wfst-omega.cpp -o ../phonetisaurus-arpa2wfst-omega $(LIBS)
-
-../phonetisaurus-g2p-omega: $(OOBJS) phonetisaurus-g2p-omega.cpp
-	$(CC) $(EXTRA) $(LDFLAGS) $(OOBJS) phonetisaurus-g2p-omega.cpp -o ../phonetisaurus-g2p-omega $(LIBS)
-
+get-syms: get-syms
+	$(CC) $(EXTRA) $(LDFLAGS) get-syms.cpp -o get-syms $(LIBS)
 clean:
 	$(RM) $(OUT) $(TMP)

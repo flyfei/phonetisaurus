@@ -1,7 +1,14 @@
-# README #
-Josef R. Novak
-2012-08-30
+Various Evaluation Tools
 
-Time to start thinking about the unit tests.
+Josef Robert Novak -- 2013-
 
-For the moment it's just thinking.
+NOTE: You must run `make' in the ../src directory before 
+      running make here.  That's just the way it is.
+
+perplexity evaluation program:
+ phonetisaurus-perp
+
+entry to FSM conversion utility
+ phonetisaurus-e2f
+
+

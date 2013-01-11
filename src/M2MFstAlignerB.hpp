@@ -59,10 +59,10 @@ class M2MFstAligner {
   */
 public: 
   //Basics declarations
+  unsigned int seq1_max;
+  unsigned int seq2_max;
   bool   seq1_del;
   bool   seq2_del;
-  unsigned int    seq1_max;
-  unsigned int    seq2_max;
   string seq1_sep;
   string seq2_sep;
   string s1s2_sep;
@@ -72,6 +72,9 @@ public:
   bool   restrict;
   bool   penalize_em;
   vector<LogWeight> alpha, beta;
+
+  //Encoder for encoding labels
+  EncodeMapper<LogArc>* encoder;
   //This will be used during decoding to clean the paths
   set<int>   skipSeqs;
   //OpenFst stuff
@@ -83,6 +86,7 @@ public:
   // the object.  This will ensure that any resulting 'corpus' 
   // shares the same symbol tables.
   SymbolTable *isyms;
+  SymbolTable *osyms;
   map<LogArc::Label, LogWeight> alignment_model;
   map<LogArc::Label, LogWeight> prev_alignment_model;
   LabelData penalties;
@@ -110,7 +114,7 @@ public:
   //Initialize all of the training data
   void entry2alignfst( vector<string> seq1, vector<string> seq2 );
   void entry2alignfstnoinit( vector<string> seq1, vector<string> seq2, int nbest, string lattice="" );
-  void _conditional_max( bool x_given_y );
+
   //The expectation routines
   void expectation( );
 

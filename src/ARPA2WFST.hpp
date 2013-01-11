@@ -1,5 +1,5 @@
 /*
- Arpa2Fst.hpp
+ ARPA2WFST.hpp
 
  Copyright (c) [2012-], Josef Robert Novak
  All rights reserved.
@@ -29,41 +29,31 @@
  OF THE POSSIBILITY OF SUCH DAMAGE.
 *
 */
-#ifndef ARPA2FST_H
-#define ARPA2FST_H
-/*
- *  LanguageModel.hpp
- *  openPhone-proj
- *
- *  Created by Joe Novak on 11/02/18.
- *  Copyright 2011 __MyCompanyName__. All rights reserved.
- *
- */
+#ifndef ARPA2WFST_H
+#define ARPA2WFST_H
 #include <float.h>
 #include <fst/fstlib.h>
 #include "util.hpp"
 using namespace fst;
 
-class Arpa2OpenFST {
-	/*
-	 Convert an arbitrary ARPA format N-gram language model of 
-	 order N to an equivalent OpenFST-based WFST.
-	 
-	 -- Back-off weights are handled as normal epsilon-arcs
-	 
-	 -- Any 'missing' back-offs are automatically set to '0.0'
-	 however the actual value should be semiring dependent.
-	 
-	 -- Completely missing lower-order N-grams will be ignored.  
-	 In some interpolated models this seems to occasionally lead to 
-	 non-coaccessible states.  Other possible options might be to
-	 -*- Generate the missing N-grams (but this seems wrong)
-	 -*- Force the higher-order N-gram to sentence-end
-	 
-	 -- In this simple implementation the names for the symbols tables 
-	 are fixed to 'ssyms', 'isyms', and 'osyms'.  The default epsilon
-	 symbol is '<eps>' but can be set to whatever the user prefers.
-	 */  
+class ARPA2WFST {
+  /*
+      Transform a statistical language model in ARPA format
+      to an equivalent Weighted Finite-State Acceptor.
+      This implementation adopts the Google format for the output
+      WFSA.  This differs from previous implementations in several ways:
+
+       Start-state and <s> arcs:
+       * There are no explicit sentence-begin (<s>) arcs
+       * There is a single <s> start-state.
+
+       Final-state and </s> arcs:
+       * There are no explicit sentence-end (</s>) arcs
+       * There is no explicit </s> state
+       * NGrams ending in </s> are designated as final
+            states, and any probability is assigned 
+            to the final weight of said state.
+  */  
 	
 public: 
   ifstream   arpa_lm_fp;
@@ -72,37 +62,36 @@ public:
   size_t     max_order;
   size_t     current_order;
 
-  //default values set
+  //Default values
   string     eps;      //epsilon symbol
-  string     split;    //split delimiter for multi-tokens
-  string     phi;      //phi symbol (not currently used)
-  string     start;    //start tag
   string     sb;       //sentence begin tag
   string     se;       //sentence end tag
-  string     delim;    //delimiter separating input/output syms in G2P ARPA file
-  string     null_sep; //graphemic null
+  string     split;    //delimiter separating input/output syms in G2P ARPA file
+  string     skip;     //graphemic null
+  string     tie;      //tie for clusters
 
-  //FST stuff
+  //WFST stuff
   VectorFst<StdArc>  arpafst;
   SymbolTable*   ssyms;
   SymbolTable*   isyms;
   SymbolTable*   osyms;
 	
-	
-  Arpa2OpenFST( );
+  ARPA2WFST( );
   
-  Arpa2OpenFST ( string arpa_lm, string _eps, string _phi, string _split,
-		 string _start, string _sb, string _se, string _delim, string _null_sep );
+  ARPA2WFST ( string _lm, string _eps, string _sb, string _se, string _split, string _skip, string _tie );
 	
+  void arpa_to_wfst ( );
+
+private:
   double log10_2tropical( double val );
 	
-  void make_arc( string istate, string ostate, string isym, string osym, double weight );
-	
-  string join( vector<string> &tokens, string sep, int start, int end );
-	
-  void generateFST ( );
+  void _make_arc( string istate, string ostate, string isym, double weight );
+
+  void _make_final( string fstate, double weight );
+
+  string _join( vector<string>::iterator start, vector<string>::iterator end );
 	
 };
 
-#endif // ARPA2FST_H //
+#endif // ARPA2WFST_H //
 

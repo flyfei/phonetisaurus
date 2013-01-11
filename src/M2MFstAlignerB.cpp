@@ -55,7 +55,12 @@ M2MFstAligner::M2MFstAligner( bool _seq1_del, bool _seq2_del, unsigned int _seq1
   eps      = _eps;
   skip     = _skip;
   skipSeqs.insert(0);
-  isyms = new SymbolTable("syms");
+  isyms = new SymbolTable("isyms");
+  osyms = new SymbolTable("osyms");
+  uint32 flags = 0;
+  flags |= kEncodeLabels; //labels: YES
+  flags |= 0;             //weights: NO 
+  encoder = new EncodeMapper<LogArc>(flags, ENCODE);
   //Add all the important symbols to the table.  We can store these 
   // in the model that we train and then attach them to the fst model
   // if we want to use it later on. 
@@ -164,119 +169,22 @@ void M2MFstAligner::expectation( ){
 }
 
 
-void M2MFstAligner::_conditional_max( bool y_given_x ){
-  /*
-    Compute the conditional distribution, P(Y|X) using the WFST paradigm.
-    This is bassed on the approach from Shu and Hetherington 2002.
-    It is assumed that all WFSTs and operations use the Log semiring.
-
-    Given: 
-           FST1 = P(X,Y)
-    Compute:
-           FST2 = P(X) 
-             := Map_inv(Det(RmEps(Proj_i(FST1))))
-           FST3 = P(Y|X)
-             := Compose(FST2,FST1)
-
-    Proj_i:  project on input labels
-    RmEps:   epsilon removal
-    Det:     determinize
-    Map_inv: invert weights
-
-    Notes: An analogous process may be used to compute P(X|Y).  In this
-      case one would project on OUTPUT labels - Proj_o, and reverse the
-      composition order to Compose(FST1,FST2).
-
-    Future work:
-      What we are doing here in terms of *generating* the JOINT fst each
-      time is really just a dumb hack.  We *should* encode the model in an
-      FST and encode the individual lattices, rather than doing the hacky
-      manual label encoding that we currently rely on.
-  */
-
-  //Joint distribution that we start with
-  VectorFst<LogArc>* joint  = new VectorFst<LogArc>();
-  SymbolTable* misyms = new SymbolTable("misyms");
-  SymbolTable* mosyms = new SymbolTable("mosyms");
-  joint->AddState();
-  joint->AddState();
-  joint->SetStart(0);
-  joint->SetFinal(1,LogArc::Weight::One());
-  string delim = "}";
-  map<LogArc::Label,LogWeight>::iterator it;
-  for( it=prev_alignment_model.begin(); it != prev_alignment_model.end(); it++ ){
-    vector<string> io = tokenize_utf8_string( &isyms->Find((*it).first), &delim );
-    LogArc arc( misyms->AddSymbol(io[0]), mosyms->AddSymbol(io[1]), (*it).second, 1 );
-    joint->AddArc( 0, arc );
-  }
-  //VectorFst<LogArc>* joint  = new VectorFst<LogArc>();
-  //Push<LogArc,REWEIGHT_TO_FINAL>(*_joint, joint, kPushWeights);
-  //joint->SetFinal(1,LogWeight::One());
-  joint->Write("m2mjoint.fst");
-  //BEGIN COMPUTE MARGINAL P(X)  
-  VectorFst<LogArc>* dmarg;
-  if( y_given_x )
-    dmarg = new VectorFst<LogArc>(ProjectFst<LogArc>(*joint, PROJECT_INPUT));
-  else
-    dmarg = new VectorFst<LogArc>(ProjectFst<LogArc>(*joint, PROJECT_OUTPUT));
-
-  RmEpsilon(dmarg);
-  VectorFst<LogArc>* marg = new VectorFst<LogArc>();
-  Determinize(*dmarg, marg);
-  ArcMap(marg, InvertWeightMapper<LogArc>());
-
-  if( y_given_x )
-    ArcSort(marg, OLabelCompare<LogArc>());
-  else
-    ArcSort(marg, ILabelCompare<LogArc>());
-  //END COMPUTE MARGINAL P(X)
-  marg->Write("marg.fst");
-
-  //CONDITIONAL P(Y|X)
-  VectorFst<LogArc>* cond = new VectorFst<LogArc>();
-  if( y_given_x )
-    Compose(*marg, *joint, cond);
-  else
-    Compose(*joint, *marg, cond);
-  //cond now contains the conditional distribution P(Y|X)
-  cond->Write("cond.fst");
-  //Now update the model with the new values
-  for( MutableArcIterator<VectorFst<LogArc> > aiter(cond, 0); !aiter.Done(); aiter.Next() ){
-    LogArc arc = aiter.Value();
-    string lab = misyms->Find(arc.ilabel)+"}"+mosyms->Find(arc.olabel);
-    int   labi = isyms->Find(lab);
-    alignment_model[labi]      = arc.weight;
-    prev_alignment_model[labi] = LogWeight::Zero();
-  }
-  delete joint, marg, cond, dmarg;
-  delete misyms, mosyms;
-  return;
-}
-
-
-    
 float M2MFstAligner::maximization( bool lastiter ){
   //Maximization. Standard approach is simple count normalization.  
   //The 'penalize' option penalizes links by total length.  Results seem to be inconclusive.
   //  Probably get an improvement by distinguishing between gaps and insertions, etc.
-  bool cond = false;
-  float change = 1.0; //abs(total.Value()-prevTotal.Value());
-  if( cond==false ){
-    map<LogArc::Label,LogWeight>::iterator it;
-    //cout << "Total: " << total << " Change: " << abs(total.Value()-prevTotal.Value()) << endl;
-    prevTotal = total;
+  map<LogArc::Label,LogWeight>::iterator it;
+  float change = abs(total.Value()-prevTotal.Value());
+  //cout << "Total: " << total << " Change: " << abs(total.Value()-prevTotal.Value()) << endl;
+  prevTotal = total;
 
-    //Normalize and iterate to the next model.  We apply it dynamically 
-    // during the expectation step.
-    for( it=prev_alignment_model.begin(); it != prev_alignment_model.end(); it++ ){
-      alignment_model[(*it).first] = Divide((*it).second,total);
-      (*it).second = LogWeight::Zero();
-    }
-  }else{
-    _conditional_max( true );
+  //Normalize and iterate to the next model.  We apply it dynamically 
+  // during the expectation step.
+  for( it=prev_alignment_model.begin(); it != prev_alignment_model.end(); it++ ){
+    alignment_model[(*it).first] = Divide((*it).second,total);
+    (*it).second = LogWeight::Zero();
   }
 
- 
   for( unsigned int i=0; i<fsas.size(); i++ ){
     for( StateIterator<VectorFst<LogArc> > siter(fsas[i]); !siter.Done(); siter.Next() ){
       LogArc::StateId q = siter.Value();
@@ -289,11 +197,6 @@ float M2MFstAligner::maximization( bool lastiter ){
 	  }else if( ld->lhsE==false && ld->rhsE==false ){
 	    arc.weight = arc.weight.Value() * ld->tot;
 	  }
-	  /*
-	    else{
-	    arc.weight = arc.weight.Value() * (ld->tot+10);
-	  }
-	  */
 	  if( arc.weight == LogWeight::Zero() || arc.weight != arc.weight )
 	    arc.weight = 99;
 	}else{
@@ -325,6 +228,8 @@ void M2MFstAligner::Sequences2FST( VectorFst<LogArc>* fst, vector<string>* seq1,
     TODO: Add an FST version and support for conditional maximization.  May be useful for languages
      like Japanese where there is a distinct imbalance in the seq1->seq2 length correspondences.
   */
+  const EncodeTable<LogArc>& table = encoder->table();
+
   int istate=0; int ostate=0;
   for( unsigned int i=0; i<=seq1->size(); i++ ){
     for( unsigned int j=0; j<=seq2->size(); j++ ){
@@ -332,124 +237,65 @@ void M2MFstAligner::Sequences2FST( VectorFst<LogArc>* fst, vector<string>* seq1,
       istate = i*(seq2->size()+1)+j;
 
       //Epsilon arcs for seq1
-      if( seq1_del==true )
+      if( seq1_del==true ){
 	for( unsigned int l=1; l<=seq2_max; l++ ){
 	  if( j+l<=seq2->size() ){
 	    vector<string> subseq2( seq2->begin()+j, seq2->begin()+j+l );
-	    int is = isyms->AddSymbol(skip+s1s2_sep+vec2str(subseq2, seq2_sep));
+	    LogArc::Label isym = isyms->AddSymbol(skip);
+	    LogArc::Label osym = osyms->AddSymbol(vec2str(subseq2, seq2_sep));
 	    ostate = i*(seq2->size()+1) + (j+l);
-	    LogArc arc( is, is, 99, ostate );
+	    LogArc arc( isym, osym, 99, ostate );
 	    fst->AddArc( istate, arc );
-	    /*
-	    if( prev_alignment_model.find(arc.ilabel)==prev_alignment_model.end() ){
-	      prev_alignment_model.insert( pair<LogArc::Label,LogWeight>(arc.ilabel,arc.weight) );
-	      _compute_penalties( arc.ilabel, 1, l, true, false );
-	    }else{
-	      prev_alignment_model[arc.ilabel] = Plus(prev_alignment_model[arc.ilabel],arc.weight);
-	    }
-	    total = Plus( total, arc.weight );
-	    */
 	  }
 	}
+      }
 
       //Epsilon arcs for seq2
-      if( seq2_del==true )
+      if( seq2_del==true ){
 	for( unsigned int k=1; k<=seq1_max; k++ ){
 	  if( i+k<=seq1->size() ){
 	    vector<string> subseq1( seq1->begin()+i, seq1->begin()+i+k );
-	    int is = isyms->AddSymbol(vec2str(subseq1, seq1_sep)+s1s2_sep+skip);
+	    LogArc::Label isym = isyms->AddSymbol(vec2str(subseq1, seq1_sep));
+	    LogArc::Label osym = osyms->AddSymbols(skip);
 	    ostate = (i+k)*(seq2->size()+1) + j;
-	    LogArc arc( is, is, 99, ostate );
+	    LogArc arc( isym, osym, 99, ostate );
 	    fst->AddArc( istate, arc );
-	    /*
-	    if( prev_alignment_model.find(arc.ilabel)==prev_alignment_model.end() ){
-	      prev_alignment_model.insert( pair<LogArc::Label,LogWeight>(arc.ilabel,arc.weight) );
-	      _compute_penalties( arc.ilabel, k, 1, false, true );
-	    }else{
-	      prev_alignment_model[arc.ilabel] = Plus(prev_alignment_model[arc.ilabel],arc.weight);
-	    }
-	    total = Plus(total, arc.weight);
-	    */
 	  }
 	}
+      }
 
       //All the other arcs
       for( unsigned int k=1; k<=seq1_max; k++ ){
 	for( unsigned int l=1; l<=seq2_max; l++ ){
 	  if( i+k<=seq1->size() && j+l<=seq2->size() ){
 	    vector<string> subseq1( seq1->begin()+i, seq1->begin()+i+k );
-	    string s1 = vec2str(subseq1, seq1_sep);
 	    vector<string> subseq2( seq2->begin()+j, seq2->begin()+j+l );
-	    string s2 = vec2str(subseq2, seq2_sep);
 	    //This says only 1-M and N-1 allowed, no M-N links!
 	    if( restrict==true && l>1 && k>1)
 	      continue;
-	    int is = isyms->AddSymbol(s1+s1s2_sep+s2);
+	    LogArc::Label isym = isyms->AddSymbol(vec2str(subseq1, seq1_sep));
+	    LogArc::Label osym = osyms->AddSymbol(vec2str(subseq2, seq2_sep));
 	    ostate = (i+k)*(seq2->size()+1) + (j+l);
-	    LogArc arc( is, is, LogWeight::One().Value()*(k+l), ostate );
+	    LogArc arc( isym, osym, LogWeight::One().Value()*(k+l), ostate );
 	    fst->AddArc( istate, arc );
-	    //During the initialization phase, just count non-eps transitions
-	    //We currently initialize to uniform probability so there is also 
-            // no need to tally anything here.
-	    /*
-	    if( prev_alignment_model.find(arc.ilabel)==prev_alignment_model.end() ){
-	      prev_alignment_model.insert( pair<LogArc::Label,LogWeight>(arc.ilabel, arc.weight) );
-	      _compute_penalties( arc.ilabel, k, l, false, false );
-	    }else{
-	      prev_alignment_model[arc.ilabel] = Plus(prev_alignment_model[arc.ilabel],arc.weight);
-	    }
-	    total = Plus( total, arc.weight );
-	    */
 	  }
 	}
       }
+
 
     }
   }
 
   fst->SetStart(0);
   fst->SetFinal( ((seq1->size()+1)*(seq2->size()+1))-1, LogWeight::One() );
+
   //Unless seq1_del==true && seq2_del==true we will have unconnected states
   // thus we need to run connect to clean out these states
   if( seq1_del==false || seq2_del==false )
     Connect(fst);
 
-  //Only add arcs that are in the FINAL fst to the model
-  for( StateIterator<VectorFst<LogArc> > siter(*fst); !siter.Done(); siter.Next() ){
-    LogArc::StateId q = siter.Value();
-    for( ArcIterator<VectorFst<LogArc> > aiter(*fst, q); !aiter.Done(); aiter.Next() ){
-      const LogArc& arc = aiter.Value();
-      if( prev_alignment_model.find(arc.ilabel)==prev_alignment_model.end() ){
-	prev_alignment_model.insert( pair<LogArc::Label,LogWeight>(arc.ilabel, arc.weight) );
-	string sym = isyms->Find(arc.ilabel);
-	size_t del = sym.find("}");
-	size_t ski = sym.find("_");
-	size_t chu = sym.find("|");
-	int k=1; int l=1;
-	bool xd = false; bool yd = false;
-	if( chu!=string::npos ){
-	  if( chu<del )
-	    k += 1;
-	  else
-	    l += 1;
-	}
-	if( ski!=string::npos ){
-	  if( ski<del )
-	    xd = true;
-	  else
-	    yd = true;
-	}
-	_compute_penalties( arc.ilabel, k, l, false, false );
-      }else{
-	prev_alignment_model[arc.ilabel] = Plus(prev_alignment_model[arc.ilabel],arc.weight);
-      }
-      total = Plus( total, arc.weight );
-    }
-  }
-  if( seq1->size()>5 && seq1->at(0)=="a" && seq1->at(1)=="s" && seq1->at(2)=="b" ){
-    fst->SetInputSymbols(isyms);
-    fst->Write("asbestos.fst");
-  }
+  //Now encode the final WFST->WFSA
+  Encode(fst,encoder);
   return;
 }
 

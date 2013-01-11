@@ -59,6 +59,9 @@ void LatticePruner::prune_fst( VectorFst<StdArc>* fst ){
   if( penalize==true )
     _penalize_arcs( fst );
 
+  if( fb==true )
+    _forward_backward( fst );
+
   if( nbest==1 ){
     //If N=1 then all the remaining stuff is a waste of time.
     //This is because the pruning heuristics are all computed
@@ -68,8 +71,6 @@ void LatticePruner::prune_fst( VectorFst<StdArc>* fst ){
     return;
   }
 
-  if( fb==true )
-    _forward_backward( fst );
 
   if( beam.Value() != LogWeight::Zero() )
     Prune( fst, beam );

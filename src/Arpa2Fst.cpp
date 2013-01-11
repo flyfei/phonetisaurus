@@ -76,7 +76,12 @@ Arpa2OpenFST::Arpa2OpenFST(
 }
 
 double Arpa2OpenFST::log10_2tropical( double val ) {
-  return log(10.0) * val * -1.0;
+  val = log(10.0) * val * -1.0;
+  if( !(val <= DBL_MAX && val >= -DBL_MAX) )
+    val = 99.0;
+  if( val != val )
+    val = 99.0;
+  return val;  
 }
 	
 void Arpa2OpenFST::make_arc( string istate, string ostate, string isym, string osym, double weight ){

@@ -30,8 +30,12 @@
 *
 */
 #include <fst/fstlib.h>
-#include <utf8.h>                                                                                                                                                                   
+#include <utf8.h>
 #include <google/dense_hash_map>
+#ifdef __MACH__
+#include <mach/clock.h>
+#include <mach/mach.h>
+#endif
 using namespace fst;
 
 typedef struct LabelDatum { int max, tot, lhs, rhs; bool lhsE, rhsE; } LabelDatum;
@@ -44,5 +48,9 @@ string itoas( int i );
 vector<string> tokenize_utf8_string( string* utf8_string, string* delimiter );
 
 vector<string> tokenize_entry( string* testword, string* sep, SymbolTable* syms );
+
+timespec get_time( );
+
+timespec diff(timespec start, timespec end);
 
 #endif //UTIL_H //

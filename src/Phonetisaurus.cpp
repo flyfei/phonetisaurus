@@ -56,30 +56,20 @@ Phonetisaurus::Phonetisaurus( const char* _g2pmodel_file, bool _mbrdecode, float
     se   = "</s>";
     skip = "_";
     
-    
     g2pmodel = StdVectorFst::Read( _g2pmodel_file );
-    if(g2pmodel == NULL) {
-	    return;
-    }
 
     isyms = (SymbolTable*)g2pmodel->InputSymbols(); 
     tie  = isyms->Find(1); //The separator symbol is reserved for index 1
-
+    skipSeqs.insert(isyms->Find(eps));
+    skipSeqs.insert(isyms->Find(sb));
+    skipSeqs.insert(isyms->Find(se));
+    skipSeqs.insert(isyms->Find(skip));
+    
     osyms = (SymbolTable*)g2pmodel->OutputSymbols(); 
-    if( osyms->Find(eps)!=-1 )
-      skipSeqs.insert(osyms->Find(eps));
-    if( osyms->Find(sb)!=-1 )
-      skipSeqs.insert(osyms->Find(sb));
-    if( osyms->Find(se)!=-1 )
-      skipSeqs.insert(osyms->Find(se));
-    if( osyms->Find(skip)!=-1 )
-      skipSeqs.insert(osyms->Find(skip));
-    if( osyms->Find("-")!=-1 )
-      skipSeqs.insert(osyms->Find("-"));
     
     loadClusters( );
     
-    //epsMapper = makeEpsMapper( );
+    epsMapper = makeEpsMapper( );
     
     //We need make sure the g2pmodel is arcsorted
     ILabelCompare<StdArc> icomp;
@@ -120,6 +110,7 @@ StdVectorFst Phonetisaurus::makeEpsMapper( ){
      This can be used to remove unwanted symbols from the final 
      result, but in tests was 7x slower than manual removal
      via the FstPathFinder object.
+     */
     
     StdVectorFst mfst;
     mfst.AddState();
@@ -127,9 +118,7 @@ StdVectorFst Phonetisaurus::makeEpsMapper( ){
     
     set<string>::iterator sit;
     for( size_t i=0; i< osyms->NumSymbols(); i++ ){
-        string sym = osyms->Find( i );
-        sit = skipSeqs.find( sym );
-        if( sit!=skipSeqs.end() )
+        if( skipSeqs.find(i)!=skipSeqs.end() )
             mfst.AddArc( 0, StdArc( i, 0, 0, 0 ) );
         else
             mfst.AddArc( 0, StdArc( i, i, 0, 0 ) );
@@ -139,9 +128,8 @@ StdVectorFst Phonetisaurus::makeEpsMapper( ){
     ArcSort( &mfst, icomp );
     mfst.SetInputSymbols( osyms );
     mfst.SetOutputSymbols( osyms );
-     */
-  StdVectorFst mfst;
-  return mfst;
+    
+    return mfst;
 }
 
 StdVectorFst Phonetisaurus::entryToFSA( vector<string> entry ){
@@ -223,6 +211,7 @@ int Phonetisaurus::_compute_thetas( int wlen ){
   //cout << "N: " << N << endl;
   //Theta0 is basically an insertion penalty
   // -1/T
+  float ip = -0.3;
   thetas.push_back( -1/T );
   for( int n=1; n<=order; n++ )
       thetas.push_back( 1.0/((N*T*precision) * (pow(ratio,(n-1)))) );
@@ -276,6 +265,17 @@ vector<PathData> Phonetisaurus::phoneticize( vector<string> entry, int nbest, in
       //cout << "decode" << endl;
       mbrdecoder.build_decoder( );
       Map( *mbrdecoder.omegas[N-1], &result, LogToStdMapper() );
+      skipSeqs.clear();
+      string eps1 = "<eps>";
+      string sb1  = "<s>";
+      string se1 = "</s>";
+      string sk1 = "_";
+      *osyms = *(mbrdecoder.omegas[N-1]->OutputSymbols());
+      osyms->AddSymbol(sk1);
+      skipSeqs.insert(osyms->Find(eps1));
+      skipSeqs.insert(osyms->Find(sb1));
+      skipSeqs.insert(osyms->Find(se1));
+      skipSeqs.insert(osyms->Find(sk1));
     }
     //cout << "Finished MBR stuff!" << endl;
     if( nbest > 1 ){
@@ -298,57 +298,50 @@ vector<PathData> Phonetisaurus::phoneticize( vector<string> entry, int nbest, in
     return pathfinder.paths;
 }
 
+
 bool Phonetisaurus::printPaths( vector<PathData> paths, unsigned int nbest, string correct, string word ){
-    /*
+  /*
      Convenience function to print out a path vector.
      Will print only the first N unique entries.
-    */
+  */
 
-    set<string> seen;
-    set<string>::iterator sit;
+  set<string> seen;
+  set<string>::iterator sit;
     
-    string onepath;
-    size_t k;
-    bool empty_path = true;
-    for( k=0; k < paths.size(); k++ ){
-        if ( k >= nbest )
-            break;
+  string onepath;
+  size_t k;
+  bool empty_path = true;
+  for( k=0; k < paths.size(); k++ ){
+    if ( k >= nbest )
+      break;
         
-        size_t j;
-        for( j=0; j < paths[k].path.size(); j++ ){
-	  string sym = osyms->Find(paths[k].path[j]);
-	  if( sym != tie )
-                replace( 
-                        sym.begin(), 
-                        sym.end(), 
-                        *tie.c_str(),
+    size_t j;
+    for( j=0; j < paths[k].path.size(); j++ ){
+      if( paths[k].path[j]==2 ) continue;
+      string sym = osyms->Find(paths[k].path[j]);
+      if( sym.compare("_")==0 ) continue;
+      if( sym != tie )
+	replace( 
+		sym.begin(), 
+		sym.end(), 
+		*tie.c_str(),
                         ' '
-                        );
-	  onepath += sym;
+		 );
+      onepath += sym;
             
-	  if( j != paths[k].path.size()-1 )
-	    onepath += " ";
-        }
-	if( onepath == "" )
-	  continue;
-	empty_path = false;
-	if( word != "" )
-	  cout << word << "\t";
-        cout << paths[k].cost << "\t" << onepath;
-        if( correct != "" )
-            cout << "\t" << correct;
-        cout << endl;
-        onepath = "";
+      if( j != paths[k].path.size()-1 )
+	onepath += " ";
     }
-    return empty_path;
+    if( onepath == "" )
+      continue;
+    empty_path = false;
+    if( word != "" )
+      cout << word << "\t";
+    cout << paths[k].cost << "\t" << onepath;
+    if( correct != "" )
+      cout << "\t" << correct;
+    cout << endl;
+    onepath = "";
+  }
+  return empty_path;
 }
-
-
-
-
-
-
-
-
-
-
