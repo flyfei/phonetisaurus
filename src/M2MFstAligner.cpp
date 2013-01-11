@@ -202,10 +202,10 @@ void M2MFstAligner::_conditional_max( bool y_given_x ){
   joint->AddState();
   joint->SetStart(0);
   joint->SetFinal(1,LogArc::Weight::One());
-  string delim = "}";
   map<LogArc::Label,LogWeight>::iterator it;
   for( it=prev_alignment_model.begin(); it != prev_alignment_model.end(); it++ ){
-    vector<string> io = tokenize_utf8_string( &isyms->Find((*it).first), &delim );
+    string isym = isyms->Find((*it).first); 
+    vector<string> io = tokenize_utf8_string( &isym, &s1s2_sep );
     LogArc arc( misyms->AddSymbol(io[0]), mosyms->AddSymbol(io[1]), (*it).second, 1 );
     joint->AddArc( 0, arc );
   }
