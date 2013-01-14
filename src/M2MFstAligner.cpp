@@ -260,7 +260,7 @@ float M2MFstAligner::maximization( bool lastiter ){
   //The 'penalize' option penalizes links by total length.  Results seem to be inconclusive.
   //  Probably get an improvement by distinguishing between gaps and insertions, etc.
   bool cond = false;
-  float change = 1.0; //abs(total.Value()-prevTotal.Value());
+  float change = abs(total.Value()-prevTotal.Value());
   if( cond==false ){
     map<LogArc::Label,LogWeight>::iterator it;
     //cout << "Total: " << total << " Change: " << abs(total.Value()-prevTotal.Value()) << endl;

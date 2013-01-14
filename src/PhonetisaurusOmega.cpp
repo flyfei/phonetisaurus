@@ -201,8 +201,10 @@ void PhonetisaurusOmega::_extract_hypotheses( vector<string>* tokens ){
     delete lword;
   }
 
-  //LatticePruner pruner( 500.0 , nbest, false );
-  //pruner.prune_fst(&word);
+  if( nbest>1 ){
+    LatticePruner pruner( beam , nbest, false );
+    pruner.prune_fst(&word);
+  }
 
   VectorFst<StdArc>* shortest = new VectorFst<StdArc>();
   ShortestPath( word, shortest, nbest );
