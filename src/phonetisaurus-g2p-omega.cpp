@@ -20,7 +20,9 @@ void phoneticize_word( PhonetisaurusOmega* _decoder,
       break;
     cout << _input << "\t" << p->paths[i].cost << "\t";
     for( size_t j=0; j<p->paths[i].path.size(); j++ ){
-      cout << pfsa.InputSymbols()->Find(p->paths[i].path[j]);
+      string c = pfsa.InputSymbols()->Find(p->paths[i].path[j]);
+      replace(c.begin(), c.end(), *_decoder->tie.c_str(), ' ');
+      cout << c;
       if( j != p->paths[i].path.size()-1 )
 	cout << " ";
     }
