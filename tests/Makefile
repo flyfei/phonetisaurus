@@ -27,7 +27,14 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED 
 # OF THE POSSIBILITY OF SUCH DAMAGE.
 CC=g++
+UNAME := $(shell uname)
+ifeq ($(UNAME), Darwin)
 LIBS=-lfst -ldl -lm
+endif
+ifeq ($(UNAME), Linux)
+LIBS=-lfst -ldl -lm -lrt
+endif
+
 OUT=phonetisaurus-perp phonetisaurus-e2f
 TMP=*.o
 CFLAGS ?= -O2
