@@ -12,9 +12,12 @@ void phoneticize_word( PhonetisaurusOmega* _decoder,
   */
 
   vector<string>    tokens = tokenize_entry( &_input, &_sep, &_decoder->isyms );
+  cerr << "Decoding" << endl;
   VectorFst<StdArc> pfsa   = _decoder->phoneticize( &tokens );
+  cerr << "Getting paths" << endl;
+  pfsa.Write("pfsa.fst");
   p->extract_all_paths( pfsa );
-
+  cerr << "Got paths" << endl;
   for( size_t i=0; i<p->paths.size(); i++ ){
     if( i>=_decoder->nbest )
       break;
