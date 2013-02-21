@@ -93,6 +93,7 @@ DEFINE_double( alpha,   0.6,   "LMBR alhpa LM scale factor. Default=0.6" );
 DEFINE_double( prec,    0.85,  "LMBR precision factor.  Default=0.85" );
 DEFINE_double( ratio,   0.72,  "LMBR ratio factor. Default=0.72" );
 DEFINE_string( omodel,    "", "Write the (possibly modified) model out to file 'omodel', if specified." );
+DEFINE_double( thresh, 100.0,  "Define a pruning threshold. Useful for n-best if you only want n-best that are 'close' to the 1-best result." );
 DEFINE_int32 ( verbose, 1,     "Verbosity level.  Higher is more verbose. Default=1" );
 
 int main( int argc, char** argv ){
@@ -108,7 +109,7 @@ int main( int argc, char** argv ){
   PhonetisaurusOmega* decoder = new PhonetisaurusOmega( 
 		     FLAGS_model.c_str(), FLAGS_decoder_type, FLAGS_logopt, FLAGS_beam, 
 		     FLAGS_nbest, FLAGS_lmbr, FLAGS_order, FLAGS_alpha,
-		     FLAGS_prec, FLAGS_ratio, FLAGS_verbose, FLAGS_allow_ins
+		     FLAGS_prec, FLAGS_ratio, FLAGS_verbose, FLAGS_allow_ins, FLAGS_thresh
 		    );
   set<int> skips;
   skips.insert(0);

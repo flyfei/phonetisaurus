@@ -38,7 +38,7 @@ PhonetisaurusOmega::PhonetisaurusOmega( ) {
 PhonetisaurusOmega::PhonetisaurusOmega( const char* _g2pmodel_file, string _decoder_type,
 					bool _logopt, int _beam, int _nbest, bool _lmbr, 
 					int _order, float _alpha, float _prec, 
-					float _ratio, int _verbose, bool _allow_ins
+					float _ratio, int _verbose, bool _allow_ins, float _thresh
 					){
 
   g2pmodel = VectorFst<StdArc>::Read( _g2pmodel_file );
@@ -55,6 +55,7 @@ PhonetisaurusOmega::PhonetisaurusOmega( const char* _g2pmodel_file, string _deco
   alpha     = _alpha;
   prec      = _prec;
   ratio     = _ratio;
+  thresh    = _thresh;
   verbose   = _verbose;
 
   //Have to make a copy in case we encode the model
@@ -201,12 +202,12 @@ void PhonetisaurusOmega::_extract_hypotheses( vector<string>* tokens ){
     delete lword;
   }
 
-  /*
+
   if( nbest>1 ){
-    LatticePruner pruner( beam , nbest, false );
+    LatticePruner pruner( thresh , nbest, false );
     pruner.prune_fst(&word);
   }
-  */
+
   VectorFst<StdArc>* shortest = new VectorFst<StdArc>();
   ShortestPath( word, shortest, nbest );
   word = *shortest;

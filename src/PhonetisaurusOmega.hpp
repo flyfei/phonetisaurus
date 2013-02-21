@@ -59,6 +59,7 @@ public:
   float     alpha;
   float     prec;
   float     ratio;
+  float     thresh;
   PhonetisaurusE2F* e2f;
   vector<float> thetas;
   map<vector<string>, size_t>   clusters;
@@ -77,7 +78,7 @@ public:
   PhonetisaurusOmega( const char* _g2pmodel_file, string _decoder_type, 
 		      bool _logopt, int _beam, int _nbest, bool _lmbr, 
 		      int _order, float _alpha, float _prec, 
-		      float _ratio, int _verbose, bool _allow_ins );
+		      float _ratio, int _verbose, bool _allow_ins, float _thresh );
 
   VectorFst<StdArc> phoneticize( vector<string>* tokens, bool _project=true );
   VectorFst<StdArc>* decode( );
