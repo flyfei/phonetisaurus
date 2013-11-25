@@ -2,3 +2,8 @@
 .*\.arpa$
 .*\.fst$
 .*\.fst.txt$
+phonetisaurus-align
+phonetisaurus-arpa2fst
+phonetisaurus-arpa2wfst-omega
+phonetisaurus-g2p
+phonetisaurus-g2p-omega
