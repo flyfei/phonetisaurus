@@ -90,7 +90,8 @@ private:
   void _make_final( string fstate, double weight );
 
   string _join( vector<string>::iterator start, vector<string>::iterator end );
-	
+
+  void _patch_ilabels( );
 };
 
 #endif // ARPA2WFST_H //

@@ -202,6 +202,7 @@ void ARPA2WFST::arpa_to_wfst( ) {
       }
     }
     arpa_lm_fp.close();
+    _patch_ilabels( );
     arpafst.SetInputSymbols(isyms);
     arpafst.SetOutputSymbols(osyms);
   }else{
@@ -209,6 +210,36 @@ void ARPA2WFST::arpa_to_wfst( ) {
   }
 }
 
+void ARPA2WFST::_patch_ilabels( ){
+  /*
+    Patch all input ilabels.  In some edge cases it is possible
+    to end up grapheme subsequences: e.g. 'QU' where one or
+    both tokens is only mapped to the multi-subsequence.  In thise
+    case the independent 'Q' and/or 'U' token will never appear
+    in isolation.
+    This bit resolves this by:
+
+       a.) finding and adding these missing subsequence tokens
+       b.) adding backoff loops to the LM
+    
+  */
+  for( int i=0; i<isyms->NumSymbols(); i++ ){
+    string sym = isyms->Find(i);
+    vector<string> parts  = tokenize_utf8_string( &sym, &tie );
+    if( parts.size()>1 ){
+      for( int j=0; j<parts.size(); j++ ){
+        if( isyms->Find(parts[j])==-1 ){
+          //Add the missing symbol
+          int k = isyms->AddSymbol(parts[j]);
+          //Add a backoff loop mapped to the 'skip'
+          arpafst.AddArc( 1, StdArc( k, 2, 99, 1 ) );
+        }
+      }
+    }
+  }
+  return;
+}
+  
 double ARPA2WFST::log10_2tropical( double val ) {
   /*
     Convert an ARPA-standard log10(val) value to the 
@@ -288,7 +319,3 @@ string ARPA2WFST::_join(  vector<string>::iterator start, vector<string>::iterat
   return ss.str();
 }
 	
-
-
-
-
