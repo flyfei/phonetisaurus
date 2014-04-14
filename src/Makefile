@@ -35,15 +35,21 @@ ifeq ($(UNAME), Linux)
 LIBS=-lfst -ldl -lm -lrt
 endif
 
-OUT=../phonetisaurus-g2p ../phonetisaurus-align ../phonetisaurus-arpa2fst ../phonetisaurus-arpa2wfst-omega ../phonetisaurus-g2p-omega
+OUT=../phonetisaurus-g2p ../phonetisaurus-align \
+	../phonetisaurus-arpa2fst ../phonetisaurus-arpa2wfst-omega \
+	../phonetisaurus-g2p-omega
 TMP=*.o
 CFLAGS ?= -O2
-THIRD_PARTIES_INCLUDE ?= -I3rdparty/sparsehash -I3rdparty/utfcpp
+THIRD_PARTIES_INCLUDE ?= -I3rdparty/sparsehash -I3rdparty/utfcpp -I3rdparty/rnnlm
 EXTRA=$(CFLAGS) $(THIRD_PARTIES_INCLUDE) $(CXXFLAGS) $(CPPFLAGS) 
 
-POBJS=Phonetisaurus.o FstPathFinder.o MBRDecoder.o LatticePruner.o util.o
-MOBJS=M2MFstAligner.o FstPathFinder.o MBRDecoder.o LatticePruner.o util.o
-OOBJS=PhonetisaurusOmega.o PhonetisaurusE2F.o util.o FstPathFinder.o LatticePruner.o MBRDecoder.o
+POBJS=Phonetisaurus.o FstPathFinder.o MBRDecoder.o \
+	LatticePruner.o util.o
+MOBJS=M2MFstAligner.o FstPathFinder.o MBRDecoder.o \
+	LatticePruner.o util.o
+OOBJS=PhonetisaurusOmega.o PhonetisaurusE2F.o util.o \
+	FstPathFinder.o LatticePruner.o MBRDecoder.o
+
 
 all: $(OUT)
 
@@ -60,10 +66,41 @@ all: $(OUT)
 	$(CC) $(EXTRA) $(LDFLAGS) Arpa2Fst.o util.o phonetisaurus-arpa2fst.cpp -o ../phonetisaurus-arpa2fst $(LIBS)
 
 ../phonetisaurus-arpa2wfst-omega: ARPA2WFST.o util.o phonetisaurus-arpa2wfst-omega.cpp
-	$(CC) $(EXTRA) $(LDFLAGS) ARPA2WFST.o util.o phonetisaurus-arpa2wfst-omega.cpp -o ../phonetisaurus-arpa2wfst-omega $(LIBS)
+	$(CC) $(EXTRA) $(LDFLAGS) ARPA2WFST.o util.o \
+	phonetisaurus-arpa2wfst-omega.cpp -o ../phonetisaurus-arpa2wfst-omega $(LIBS)
 
 ../phonetisaurus-g2p-omega: $(OOBJS) phonetisaurus-g2p-omega.cpp
 	$(CC) $(EXTRA) $(LDFLAGS) $(OOBJS) phonetisaurus-g2p-omega.cpp -o ../phonetisaurus-g2p-omega $(LIBS)
 
+
+# Some toy RnnLM bindings
+VERSION=2.6
+PYTHON_H=/usr/include/python$(VERSION)
+DEST=..
+
+rnnlm-bindings: $(DEST)/RnnLM.so
+
+$(DEST)/RnnLM.so: $(DEST)/librnnlm.so RnnLMPy-binding.o
+	$(CC) -shared -lrt -fPIC RnnLMPy-binding.o -o $(DEST)/RnnLM.so -L.. \
+	-I3rdparty/rnnlm rnnlmlib.o -lpython$(VERSION) -lrnnlm -lfst -O3 \
+	-funroll-loops -ffast-math -lm
+
+$(DEST)/librnnlm.so: RnnLMPy-binding.o
+	$(CC) -Wl,-soname,librnnlm.so.0 -shared -lfst RnnLMPy-binding.o \
+	rnnlmlib.o -I. -o $(DEST)/librnnlm.so -O3 -fPIC -funroll-loops -ffast-math -lm
+	cd ..; ln -s librnnlm.so librnnlm.so.0; cd -;
+
+RnnLMPy-binding.o: RnnLMPy-binding.cc
+	$(CC) -O3 -fPIC -funroll-loops -ffast-math -lm -I. -I3rdparty/rnnlm -I$(PYTHON_H) -c $(<) -o $(@)
+
+RnnLMPy-binding.cc: rnnlmlib.o
+	python rnnlm-module.py > RnnLMPy-binding.cc
+
+rnnlmlib.o : 3rdparty/rnnlm/rnnlmlib.cpp
+	$(CC) -O3 -fPIC -funroll-loops -ffast-math -lm -fPIC -w -c 3rdparty/rnnlm/rnnlmlib.cpp
+
 clean:
 	$(RM) $(OUT) $(TMP)
+
+clean-bindings:
+	$(RM) $(DEST)/*.so $(DEST)/*.so.0 rnnlmlib.o RnnLMPy-binding.o RnnLMPy-binding.cc
