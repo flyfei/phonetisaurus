@@ -34,7 +34,7 @@ import re, time
 
 
 if __name__=="__main__":
-    import sys, argparse
+    import sys, argparse, math
     
     example = "USAGE: {0} --rnnlm test.rnnlm --test sents.txt".format(sys.argv[0])
     parser  = argparse.ArgumentParser (description = example)
@@ -64,7 +64,7 @@ if __name__=="__main__":
             if args.verbose :
                 print "{0:.4f}\t{1}".format (result.sent_prob, " ".join(sent))
                 for i, p in enumerate(result.word_probs) :
-                    print "{0:.4f}\t{1}".format (p, sent[i])
+                    print "{0:.4f}\t{1}".format (math.pow(10,p), sent[i])
                 print ""
             total += result.sent_prob
     end = time.time ()

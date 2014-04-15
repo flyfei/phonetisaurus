@@ -74,14 +74,22 @@ all: $(OUT)
 
 
 # Some toy RnnLM bindings
-VERSION=2.6
+VERSION=2.7
 PYTHON_H=/usr/include/python$(VERSION)
 DEST=..
+ifeq ($(UNAME), Darwin)
+SONAME=$(DEST)/librnnlm.dylib
+RT=
+endif
+ifeq ($(UNAME), Linux)
+SONAME=$(DEST)/librnnlm.so
+RT=-lrt
+endif
 
 rnnlm-bindings: $(DEST)/RnnLM.so
 
-$(DEST)/RnnLM.so: $(DEST)/librnnlm.so RnnLMPy-binding.o
-	$(CC) -shared -lrt -fPIC RnnLMPy-binding.o -o $(DEST)/RnnLM.so -L.. \
+$(DEST)/RnnLM.so: $(SONAME) RnnLMPy-binding.o
+	$(CC) -shared $(RT) -fPIC RnnLMPy-binding.o -o $(DEST)/RnnLM.so -L.. \
 	-I3rdparty/rnnlm rnnlmlib.o -lpython$(VERSION) -lrnnlm -lfst -O3 \
 	-funroll-loops -ffast-math -lm
 
@@ -89,6 +97,11 @@ $(DEST)/librnnlm.so: RnnLMPy-binding.o
 	$(CC) -Wl,-soname,librnnlm.so.0 -shared -lfst RnnLMPy-binding.o \
 	rnnlmlib.o -I. -o $(DEST)/librnnlm.so -O3 -fPIC -funroll-loops -ffast-math -lm
 	cd ..; ln -s librnnlm.so librnnlm.so.0; cd -;
+
+$(DEST)/librnnlm.dylib: RnnLMPy-binding.o
+	$(CC) -Wl,-install_name,librnnlm.so -shared -lc -lfst RnnLMPy-binding.o \
+	rnnlmlib.o -I. -o $(DEST)/librnnlm.dylib -O3 -fPIC -funroll-loops \
+	-ffast-math -lm -lpython$(VERSION)
 
 RnnLMPy-binding.o: RnnLMPy-binding.cc
 	$(CC) -O3 -fPIC -funroll-loops -ffast-math -lm -I. -I3rdparty/rnnlm -I$(PYTHON_H) -c $(<) -o $(@)

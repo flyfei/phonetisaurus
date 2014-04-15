@@ -12,6 +12,9 @@
 #define _RNNLMLIB_H_
 
 #define MAX_STRING 100
+#ifdef __APPLE__
+#define exp10(n) pow((double)10,(4-n))
+#endif 
 
 typedef double real;		// doubles for NN weights
 typedef double direct_t;	// doubles for ME weights; TODO: check why floats are not enough for RNNME (convergence problems)
