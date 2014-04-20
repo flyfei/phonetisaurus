@@ -26,81 +26,74 @@
 # STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) 
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED 
 # OF THE POSSIBILITY OF SUCH DAMAGE.
+VERSION=2.7
+PYTHON_H=/usr/include/python$(VERSION)
+BINDIR=../bin
+LIBDIR=../lib
+PYLIB=../phonetisaurus
+RNNPY=../rnnlm
+
 CC=g++
 UNAME := $(shell uname)
 ifeq ($(UNAME), Darwin)
 LIBS=-lfst -ldl -lm
+RNNSONAME=$(DEST)/librnnlm.dylib
+G2PSONAME=$(DEST)/libphonetisaurus.dylib
 endif
 ifeq ($(UNAME), Linux)
 LIBS=-lfst -ldl -lm -lrt
+RNNSONAME=$(DEST)/librnnlm.so
+G2PSONAME=$(DEST)/libphonetisaurus.so
 endif
 
-OUT=../phonetisaurus-g2p ../phonetisaurus-align \
-	../phonetisaurus-arpa2fst ../phonetisaurus-arpa2wfst-omega \
-	../phonetisaurus-g2p-omega
-TMP=*.o
-CFLAGS ?= -O2
+%.o: %.cc 
+	$(CC) $(EXTRA) -c $(<) -o $(@)
+
+OUT=$(OBJS) $(BINDIR)/phonetisaurus-align $(BINDIR)/phonetisaurus-arpa2wfst-omega 
+
+CFLAGS ?= -O2     
 THIRD_PARTIES_INCLUDE ?= -I3rdparty/sparsehash -I3rdparty/utfcpp -I3rdparty/rnnlm
 EXTRA=$(CFLAGS) $(THIRD_PARTIES_INCLUDE) $(CXXFLAGS) $(CPPFLAGS) 
 
-POBJS=Phonetisaurus.o FstPathFinder.o MBRDecoder.o \
-	LatticePruner.o util.o
-MOBJS=M2MFstAligner.o FstPathFinder.o MBRDecoder.o \
-	LatticePruner.o util.o
-OOBJS=PhonetisaurusOmega.o PhonetisaurusE2F.o util.o \
-	FstPathFinder.o LatticePruner.o MBRDecoder.o
+OBJS=util.o ARPA2WFST.o rnnlmlib.o FstPathFinder.o LatticePruner.o \
+	M2MFstAligner.o phonetisaurus-align.o
 
 
-all: $(OUT)
+.PHONY: phonetisaurus-align phonetisaurus-arpa2wfst-omega \
+	rnnlm-binding phonetisaurus-binding
 
-%.o: %.cpp
-	$(CC) $(EXTRA) -c $(<) -o $(@)
+all: phonetisaurus-align phonetisaurus-arpa2wfst-omega \
+	rnnlm-binding phonetisaurus-binding
 
-../phonetisaurus-align: $(MOBJS) phonetisaurus-align.cpp
-	$(CC) $(EXTRA) $(LDFLAGS) $(MOBJS) phonetisaurus-align.cpp -o ../phonetisaurus-align $(LIBS)
+phonetisaurus-align: $(BINDIR)/phonetisaurus-align
+phonetisaurus-arpa2wfst-omega: $(BINDIR)/phonetisaurus-arpa2wfst-omega
 
-../phonetisaurus-g2p: $(POBJS) phonetisaurus-g2p.cpp
-	$(CC) $(EXTRA) $(LDFLAGS) $(POBJS) phonetisaurus-g2p.cpp -o ../phonetisaurus-g2p $(LIBS)
+$(BINDIR)/phonetisaurus-align: util.o LatticePruner.o M2MFstAligner.o \
+	FstPathFinder.o phonetisaurus-align.o
+	$(CC) $(EXTRA) $(LDFLAGS) $(LIBS) util.o LatticePruner.o M2MFstAligner.o \
+	FstPathFinder.o phonetisaurus-align.o \
+	-o $(BINDIR)/phonetisaurus-align $(LIBS)
 
-../phonetisaurus-arpa2fst: Arpa2Fst.o util.o phonetisaurus-arpa2fst.cpp
-	$(CC) $(EXTRA) $(LDFLAGS) Arpa2Fst.o util.o phonetisaurus-arpa2fst.cpp -o ../phonetisaurus-arpa2fst $(LIBS)
+$(BINDIR)/phonetisaurus-arpa2wfst-omega: ARPA2WFST.o util.o phonetisaurus-arpa2wfst-omega.o
+	$(CC) $(EXTRA) $(LDFLAGS) $(LIBS) ARPA2WFST.o util.o phonetisaurus-arpa2wfst-omega.o \
+	-o $(BINDIR)/phonetisaurus-arpa2wfst-omega $(LIBS)
 
-../phonetisaurus-arpa2wfst-omega: ARPA2WFST.o util.o phonetisaurus-arpa2wfst-omega.cpp
-	$(CC) $(EXTRA) $(LDFLAGS) ARPA2WFST.o util.o \
-	phonetisaurus-arpa2wfst-omega.cpp -o ../phonetisaurus-arpa2wfst-omega $(LIBS)
+#RnnLM bindings
+rnnlm-binding: $(DEST)/RnnLM.so
 
-../phonetisaurus-g2p-omega: $(OOBJS) phonetisaurus-g2p-omega.cpp
-	$(CC) $(EXTRA) $(LDFLAGS) $(OOBJS) phonetisaurus-g2p-omega.cpp -o ../phonetisaurus-g2p-omega $(LIBS)
-
-
-# Some toy RnnLM bindings
-VERSION=2.7
-PYTHON_H=/usr/include/python$(VERSION)
-DEST=..
-ifeq ($(UNAME), Darwin)
-SONAME=$(DEST)/librnnlm.dylib
-RT=
-endif
-ifeq ($(UNAME), Linux)
-SONAME=$(DEST)/librnnlm.so
-RT=-lrt
-endif
-
-rnnlm-bindings: $(DEST)/RnnLM.so
-
-$(DEST)/RnnLM.so: $(SONAME) RnnLMPy-binding.o
-	$(CC) -shared $(RT) -fPIC RnnLMPy-binding.o -o $(DEST)/RnnLM.so -L.. \
+$(DEST)/RnnLM.so: $(RNNSONAME) RnnLMPy-binding.o
+	$(CC) -shared $(RT) -fPIC RnnLMPy-binding.o -o $(RNNPY)/RnnLM.so -L$(LIBDIR) \
 	-I3rdparty/rnnlm rnnlmlib.o -lpython$(VERSION) -lrnnlm -lfst -O3 \
 	-funroll-loops -ffast-math -lm
 
 $(DEST)/librnnlm.so: RnnLMPy-binding.o
 	$(CC) -Wl,-soname,librnnlm.so.0 -shared -lfst RnnLMPy-binding.o \
-	rnnlmlib.o -I. -o $(DEST)/librnnlm.so -O3 -fPIC -funroll-loops -ffast-math -lm
-	cd ..; ln -s librnnlm.so librnnlm.so.0; cd -;
+	rnnlmlib.o -I. -o $(LIBDIR)/librnnlm.so -O3 -fPIC -funroll-loops -ffast-math -lm
+	cd $(LIBDIR); ln -s librnnlm.so librnnlm.so.0; cd -;
 
 $(DEST)/librnnlm.dylib: RnnLMPy-binding.o
 	$(CC) -Wl,-install_name,librnnlm.so -shared -lc -lfst RnnLMPy-binding.o \
-	rnnlmlib.o -I. -o $(DEST)/librnnlm.dylib -O3 -fPIC -funroll-loops \
+	rnnlmlib.o -I. -o $(LIBDIR)/librnnlm.dylib -O3 -fPIC -funroll-loops \
 	-ffast-math -lm -lpython$(VERSION)
 
 RnnLMPy-binding.o: RnnLMPy-binding.cc
@@ -112,34 +105,21 @@ RnnLMPy-binding.cc: rnnlmlib.o
 rnnlmlib.o : 3rdparty/rnnlm/rnnlmlib.cpp
 	$(CC) -O3 -fPIC -funroll-loops -ffast-math -lm -fPIC -w -c 3rdparty/rnnlm/rnnlmlib.cpp
 
+#G2P bindings
+phonetisaurus-binding: $(PYLIB)/Phonetisaurus.so
 
-#And phonetisaurus bindings for the latest 'decoder'
-VERSION=2.7
-PYTHON_H=/usr/include/python$(VERSION)
-DEST=.
-ifeq ($(UNAME), Darwin)
-SONAME=$(DEST)/libphonetisaurus.dylib
-RT=
-endif
-ifeq ($(UNAME), Linux)
-SONAME=$(DEST)/libphonetisaurus.so
-RT=-lrt
-endif
-
-phonetisaurus-binding: $(DEST)/Phonetisaurus.so
-
-$(DEST)/Phonetisaurus.so: $(SONAME) Phonetisaurus-binding.o util.o
+$(PYLIB)/Phonetisaurus.so: $(G2PSONAME) Phonetisaurus-binding.o util.o
 	$(CC) -shared $(RT) -fPIC Phonetisaurus-binding.o util.o \
-	-o $(DEST)/Phonetisaurus.so -I3rdparty/sparsehash -I3rdparty/utfcpp \
-	-lpython$(VERSION) -L. -lphonetisaurus -lfst -O3 -lm
+	-o $(PYLIB)/Phonetisaurus.so -I3rdparty/sparsehash -I3rdparty/utfcpp \
+	-lpython$(VERSION) -L. -L$(LIBDIR) -lphonetisaurus -lfst -O3 -lm
 
-#$(DEST)/libphonetisaurus.so: Phonetisaurus-binding.o util.o
-#	$(CC) -Wl,-soname,libphonetisaurus.so.0 -shared -lfst Phonetisaurus-binding.o \
-#	util.o -I. -o $(DEST)/libphonetisaurus.so -O3 -fPIC -funroll-loops -ffast-math -lm
+$(LIB)/libphonetisaurus.so: Phonetisaurus-binding.o util.o
+	$(CC) -Wl,-soname,libphonetisaurus.so.0 -shared -lfst Phonetisaurus-binding.o \
+	util.o -I. -o $(LIB)/libphonetisaurus.so -O3 -fPIC -funroll-loops -ffast-math -lm
 
-$(DEST)/libphonetisaurus.dylib: Phonetisaurus-binding.o util.o
+$(LIB)/libphonetisaurus.dylib: Phonetisaurus-binding.o util.o
 	$(CC) -Wl,-install_name,libphonetisaurus.dylib -shared -lc -lfst Phonetisaurus-binding.o \
-	-I. util.o -o $(DEST)/libphonetisaurus.dylib -O3 -fPIC -funroll-loops \
+	-I. util.o -o $(LIBDIR)/libphonetisaurus.dylib -O3 -fPIC -funroll-loops \
 	-ffast-math -lm -lpython$(VERSION)
 
 Phonetisaurus-binding.o: Phonetisaurus-binding.cc
@@ -149,11 +129,11 @@ Phonetisaurus-binding.o: Phonetisaurus-binding.cc
 Phonetisaurus-binding.cc: phonetisaurus-module.py
 	python phonetisaurus-module.py > Phonetisaurus-binding.cc
 
-
-clean:
+clean: clean-bindings
 	$(RM) $(OUT) $(TMP)
 
 clean-bindings:
-	$(RM) $(DEST)/*.so $(DEST)/*.so.0 rnnlmlib.o RnnLMPy-binding.o \
-	RnnLMPy-binding.cc $(DEST)/.*dylib Phonetisaurus-binding.o libphonetisaurus.dylib \
-	Phonetisaurus-binding.cc
+	$(RM) $(DEST)/*.so $(LIBDIR)/*.so.0 rnnlmlib.o RnnLMPy-binding.o \
+	RnnLMPy-binding.cc $(LIBDIR)/*.dylib Phonetisaurus-binding.o \
+	Phonetisaurus-binding.cc $(PYLIB)/*.so $(RNNPY)/*.so \
+	$(PYLIB)/*.pyc $(RNNPY)/*.pyc

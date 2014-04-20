@@ -31,7 +31,7 @@
  OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 #include <fst/fstlib.h>
-#include "util.hpp"
+#include "util.h"
 using namespace std;
 
 namespace fst{

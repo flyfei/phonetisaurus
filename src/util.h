@@ -41,18 +41,18 @@ using namespace fst;
 typedef struct LabelDatum { int max, tot, lhs, rhs; bool lhsE, rhsE; } LabelDatum;
 typedef google::dense_hash_map<LogArc::Label,LabelDatum> LabelData;
 
-string vec2str( vector<string> vec, string sep );
+string vec2str (vector<string> vec, string sep);
 
-string itoas( int i );
+string itoas (int i);
 
-vector<string> tokenize_utf8_string(string* utf8_string, string* delimiter );
+vector<string> tokenize_utf8_string (string* utf8_string, string* delimiter);
 
-vector<string> tokenize_entry(string* testword, string* sep, SymbolTable* syms );
+vector<string> tokenize_entry (string* testword, string* sep, SymbolTable* syms);
 
 vector<int> tokenize2ints (string* word, string* sep, const SymbolTable* syms);
 
 timespec get_time( );
 
-timespec diff(timespec start, timespec end);
+timespec diff (timespec start, timespec end);
 
 #endif //UTIL_H //

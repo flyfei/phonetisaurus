@@ -27,7 +27,7 @@
  OF THE POSSIBILITY OF SUCH DAMAGE.
 *
 */
-#include "util.hpp"
+#include "util.h"
 using namespace fst;
 
 
@@ -88,7 +88,7 @@ vector<string> tokenize_utf8_string( string* utf8_string, string* delimiter ) {
 }
 
 
-vector<string> tokenize_entry( string* testword, string* sep, SymbolTable* syms ){
+vector<string> tokenize_entry(string* testword, string* sep, SymbolTable* syms ){
   vector<string> tokens = tokenize_utf8_string( testword, sep );
   vector<string> entry;
   for( unsigned int i=0; i<tokens.size(); i++ ){

@@ -29,7 +29,7 @@
  OF THE POSSIBILITY OF SUCH DAMAGE.
 *
 */
-#include "ARPA2WFST.hpp"
+#include "ARPA2WFST.h"
 	
 ARPA2WFST::ARPA2WFST( ) {
 	//Default constructor.

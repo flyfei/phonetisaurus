@@ -32,7 +32,7 @@
 */
 #include <fst/fstlib.h>
 #include <fst/extensions/far/far.h>
-#include "util.hpp"
+#include "util.h"
 using namespace std;
 
 

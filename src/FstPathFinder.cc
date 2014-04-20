@@ -29,9 +29,9 @@
  OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  */
-#include "FstPathFinder.hpp"
+#include "FstPathFinder.h"
 
-FstPathFinder::FstPathFinder( ){
+FstPathFinder::FstPathFinder ( ) {
   //By default we'll just skip <eps>
   skip.insert(0);
   band = 999999;

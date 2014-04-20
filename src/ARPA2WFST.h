@@ -33,7 +33,7 @@
 #define ARPA2WFST_H
 #include <float.h>
 #include <fst/fstlib.h>
-#include "util.hpp"
+#include "util.h"
 using namespace fst;
 
 class ARPA2WFST {

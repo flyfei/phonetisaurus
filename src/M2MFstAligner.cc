@@ -29,7 +29,7 @@
  OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  */
-#include "M2MFstAligner.hpp"
+#include "M2MFstAligner.h"
 
 
 

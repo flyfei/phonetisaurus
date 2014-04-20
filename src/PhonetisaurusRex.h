@@ -38,7 +38,7 @@
 #include <fst/fstlib.h>
 #include <tr1/unordered_map>
 #include <tr1/functional>
-#include "util.hpp"
+#include "util.h"
 using namespace fst;
 
 struct VectorIntHash {

@@ -29,7 +29,7 @@
  OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  */
-#include "LatticePruner.hpp"
+#include "LatticePruner.h"
 
 
 LatticePruner::LatticePruner( ){
