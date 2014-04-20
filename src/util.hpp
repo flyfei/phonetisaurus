@@ -45,9 +45,11 @@ string vec2str( vector<string> vec, string sep );
 
 string itoas( int i );
 
-vector<string> tokenize_utf8_string( string* utf8_string, string* delimiter );
+vector<string> tokenize_utf8_string(string* utf8_string, string* delimiter );
 
-vector<string> tokenize_entry( string* testword, string* sep, SymbolTable* syms );
+vector<string> tokenize_entry(string* testword, string* sep, SymbolTable* syms );
+
+vector<int> tokenize2ints (string* word, string* sep, const SymbolTable* syms);
 
 timespec get_time( );
 

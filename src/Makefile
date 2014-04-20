@@ -112,8 +112,48 @@ RnnLMPy-binding.cc: rnnlmlib.o
 rnnlmlib.o : 3rdparty/rnnlm/rnnlmlib.cpp
 	$(CC) -O3 -fPIC -funroll-loops -ffast-math -lm -fPIC -w -c 3rdparty/rnnlm/rnnlmlib.cpp
 
+
+#And phonetisaurus bindings for the latest 'decoder'
+VERSION=2.7
+PYTHON_H=/usr/include/python$(VERSION)
+DEST=.
+ifeq ($(UNAME), Darwin)
+SONAME=$(DEST)/libphonetisaurus.dylib
+RT=
+endif
+ifeq ($(UNAME), Linux)
+SONAME=$(DEST)/libphonetisaurus.so
+RT=-lrt
+endif
+
+phonetisaurus-binding: $(DEST)/Phonetisaurus.so
+
+$(DEST)/Phonetisaurus.so: $(SONAME) Phonetisaurus-binding.o util.o
+	$(CC) -shared $(RT) -fPIC Phonetisaurus-binding.o util.o \
+	-o $(DEST)/Phonetisaurus.so -I3rdparty/sparsehash -I3rdparty/utfcpp \
+	-lpython$(VERSION) -L. -lphonetisaurus -lfst -O3 -lm
+
+#$(DEST)/libphonetisaurus.so: Phonetisaurus-binding.o util.o
+#	$(CC) -Wl,-soname,libphonetisaurus.so.0 -shared -lfst Phonetisaurus-binding.o \
+#	util.o -I. -o $(DEST)/libphonetisaurus.so -O3 -fPIC -funroll-loops -ffast-math -lm
+
+$(DEST)/libphonetisaurus.dylib: Phonetisaurus-binding.o util.o
+	$(CC) -Wl,-install_name,libphonetisaurus.dylib -shared -lc -lfst Phonetisaurus-binding.o \
+	-I. util.o -o $(DEST)/libphonetisaurus.dylib -O3 -fPIC -funroll-loops \
+	-ffast-math -lm -lpython$(VERSION)
+
+Phonetisaurus-binding.o: Phonetisaurus-binding.cc
+	$(CC) -O3 -fPIC -funroll-loops -ffast-math -lm \
+	-I. -I3rdparty/sparsehash -I3rdparty/utfcpp -I$(PYTHON_H) -c $(<) -o $(@)
+
+Phonetisaurus-binding.cc: phonetisaurus-module.py
+	python phonetisaurus-module.py > Phonetisaurus-binding.cc
+
+
 clean:
 	$(RM) $(OUT) $(TMP)
 
 clean-bindings:
-	$(RM) $(DEST)/*.so $(DEST)/*.so.0 rnnlmlib.o RnnLMPy-binding.o RnnLMPy-binding.cc
+	$(RM) $(DEST)/*.so $(DEST)/*.so.0 rnnlmlib.o RnnLMPy-binding.o \
+	RnnLMPy-binding.cc $(DEST)/.*dylib Phonetisaurus-binding.o libphonetisaurus.dylib \
+	Phonetisaurus-binding.cc

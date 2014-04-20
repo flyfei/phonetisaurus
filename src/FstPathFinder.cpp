@@ -54,7 +54,8 @@ void FstPathFinder::extract_all_paths( const VectorFst<StdArc>& ifst ){
   return;
 }
 
-void FstPathFinder::_extract_paths( const VectorFst<StdArc>& ifst, StdArc::StateId id, vector<int>& path, LogWeight cost ){
+void FstPathFinder::_extract_paths( const VectorFst<StdArc>& ifst, StdArc::StateId id, 
+				    vector<int>& path, LogWeight cost ){
 
   if( ifst.Final(id) != TropicalWeight::Zero() ){
     cost = Times(cost, ifst.Final(id).Value());

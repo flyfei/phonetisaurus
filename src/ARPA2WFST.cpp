@@ -278,11 +278,12 @@ void ARPA2WFST::_make_arc( string istate, string ostate, string isym, double wei
   vector<string> io = tokenize_utf8_string( &isym, &split );
   if( io.size()==2 ){
     /*
+      Keep everything as it is: helpful for rescoring and reranking.
     if( io[0]==skip )
       io[0] = eps;
-    */
     if( io[1]==skip )
       io[1] = eps;
+    */
     arpafst.AddArc( is_id, StdArc( isyms->AddSymbol(io[0]), osyms->AddSymbol(io[1]), weight, os_id) );
   }else{
     arpafst.AddArc( is_id, StdArc( isyms->AddSymbol(isym), osyms->AddSymbol(isym), weight, os_id) );

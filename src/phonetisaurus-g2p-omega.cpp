@@ -4,25 +4,25 @@
 #include "util.hpp"
 using namespace fst;
 
-void phoneticize_word( PhonetisaurusOmega* _decoder, 
-		       string _input, string _sep, bool _words, bool _scores, FstPathFinder* p
-		       ){
+void phoneticize_word(PhonetisaurusOmega* _decoder, string _input, 
+		      string _sep, bool _words, bool _scores, 
+		      FstPathFinder* p, bool _project=true) {
   /*
     Phoneticize a single word.  Most of this process is automated.
   */
 
-  vector<string>    tokens = tokenize_entry( &_input, &_sep, &_decoder->isyms );
-  VectorFst<StdArc> pfsa   = _decoder->phoneticize( &tokens );
-  p->extract_all_paths( pfsa );
-  for( size_t i=0; i<p->paths.size(); i++ ){
-    if( i>=_decoder->nbest )
+  vector<string>    tokens = tokenize_entry (&_input, &_sep, &_decoder->isyms);
+  VectorFst<StdArc> pfsa   = _decoder->phoneticize(&tokens, _project);
+  p->extract_all_paths (pfsa);
+  for (size_t i = 0; i < p->paths.size(); i++) {
+    if (i >= _decoder->nbest)
       break;
     cout << _input << "\t" << p->paths[i].cost << "\t";
-    for( size_t j=0; j<p->paths[i].path.size(); j++ ){
+    for (size_t j = 0; j < p->paths[i].path.size(); j++) {
       string c = pfsa.InputSymbols()->Find(p->paths[i].path[j]);
       replace(c.begin(), c.end(), *_decoder->tie.c_str(), ' ');
       cout << c;
-      if( j != p->paths[i].path.size()-1 )
+      if (j != p->paths[i].path.size() - 1)
 	cout << " ";
     }
     cout << endl;
@@ -94,6 +94,7 @@ DEFINE_double( prec,    0.85,  "LMBR precision factor.  Default=0.85" );
 DEFINE_double( ratio,   0.72,  "LMBR ratio factor. Default=0.72" );
 DEFINE_string( omodel,    "", "Write the (possibly modified) model out to file 'omodel', if specified." );
 DEFINE_double( thresh, 100.0,  "Define a pruning threshold. Useful for n-best if you only want n-best that are 'close' to the 1-best result." );
+DEFINE_bool (project, true, "Project the output labels.  If false, returns joint sequences instead.");
 DEFINE_int32 ( verbose, 1,     "Verbosity level.  Higher is more verbose. Default=1" );
 
 int main( int argc, char** argv ){
@@ -119,7 +120,7 @@ int main( int argc, char** argv ){
   if( FLAGS_isfile==true )
     phoneticize_file( decoder, FLAGS_input, FLAGS_sep, FLAGS_words, FLAGS_scores, p, FLAGS_verbose );
   else
-    phoneticize_word( decoder, FLAGS_input, FLAGS_sep, FLAGS_words, FLAGS_scores, p );
+    phoneticize_word(decoder, FLAGS_input, FLAGS_sep, FLAGS_words, FLAGS_scores, p, FLAGS_project);
 
   if( FLAGS_omodel.compare("")!=0 ){
     if( FLAGS_decoder_type.compare("fst_phi")==0 ){

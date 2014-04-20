@@ -104,6 +104,22 @@ vector<string> tokenize_entry( string* testword, string* sep, SymbolTable* syms 
   return entry;
 }
 
+vector<int> tokenize2ints (string* testword, string* sep, const SymbolTable* syms) {
+  vector<string> tokens = tokenize_utf8_string (testword, sep);
+  vector<int> entry;
+  for (unsigned int i=0; i<tokens.size(); i++) {
+    int label = syms->Find (tokens[i]);
+    if (label == -1)
+      cerr << "Symbol: '" << tokens[i]
+           << "' not found in input symbols table." << endl
+           << "Mapping to null..." << endl;
+    else
+      entry.push_back (label);
+  }
+
+  return entry;
+}
+
 #ifdef __MACH__
 timespec get_time( ){
   clock_serv_t cclock;

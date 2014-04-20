@@ -42,17 +42,22 @@ DEFINE_string( tie,        "|",  "Character separating multi-token subsequences.
 DEFINE_string( ofile,       "",  "Output file for writing. (STDOUT)" );
 
 int main( int argc, char* argv[] ){
-  string usage = "arpa2wfsa - Transform an ARPA LM into an equivalent WFSA.\n\n Usage: ";
+  string usage = "arpa2wfsa - Transform an ARPA LM into an "
+    "equivalent WFSA.\n\n Usage: ";
   set_new_handler(FailedNewHandler);
   SetFlags(usage.c_str(), &argc, &argv, false );
 
   if( FLAGS_lm.compare("")==0 ){
-    cerr << "You must supply an ARPA format lm to --lm for conversion!" << endl;
+    cerr << "You must supply an ARPA format lm "
+      "to --lm for conversion!" << endl;
     return 0;
   }
     
   cerr << "Initializing..." << endl;
-  ARPA2WFST* converter = new ARPA2WFST( FLAGS_lm, FLAGS_eps, FLAGS_sb, FLAGS_se, FLAGS_split, FLAGS_skip, FLAGS_tie );
+  ARPA2WFST* converter = new ARPA2WFST( 
+    FLAGS_lm, FLAGS_eps, FLAGS_sb, FLAGS_se, 
+    FLAGS_split, FLAGS_skip, FLAGS_tie
+    );
   cerr << "Converting..." << endl;
   converter->arpa_to_wfst( );
   
