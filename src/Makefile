@@ -33,6 +33,9 @@ LIBDIR=../lib
 PYLIB=../phonetisaurus
 RNNPY=../rnnlm
 
+INSTALLBIN=/usr/local/bin
+INSTALLLIB=/usr/local/lib
+
 CC=g++
 UNAME := $(shell uname)
 ifeq ($(UNAME), Darwin)
@@ -128,6 +131,13 @@ Phonetisaurus-binding.o: Phonetisaurus-binding.cc
 
 Phonetisaurus-binding.cc: phonetisaurus-module.py
 	python phonetisaurus-module.py > Phonetisaurus-binding.cc
+
+#Installation
+install: all
+	install -c $(BINDIR)/phonetisaurus-align $(INSTALLBIN)/phonetisaurus-align
+	install -c $(BINDIR)/phonetisaurus-arpa2wfst-omega $(INSTALLBIN)/phonetisaurus-arpa2wfst-omega
+	install -c $(LIBDIR)/$(G2PSONAME) $(INSTALLLIB)/$(G2PSONAME)
+	install -c $(LIBDIR)/$(RNNSONAME) $(INSTALLLIB)/$(RNNSONAME)
 
 clean: clean-bindings
 	$(RM) $(OUT) $(TMP)
