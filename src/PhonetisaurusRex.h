@@ -186,7 +186,6 @@ class M2MPathFilter {
     path->ILabels.push_back (arc.ilabel);
     path->OLabels.push_back (arc.olabel);
     path->PathWeights.push_back (arc.weight.Value());
-    //path->PathWeight += arc.weight.Value();
   }
 
  private:

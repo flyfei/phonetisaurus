@@ -29,7 +29,7 @@
 #
 # \file
 # Just a script to test out the bindings - no server involved here.
-from RnnLM import RnnLMPy
+from rnnlm import RnnLMPy
 import re, time
 
 

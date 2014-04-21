@@ -40,22 +40,55 @@
 # stubs for KenLM, but we don't use these currently for the G2P.
 from twisted.internet.protocol import Protocol, Factory
 from twisted.internet import reactor
-#import kenlm, 
-import struct, re
-from RnnLM import RnnLMPy
-import json, sys
+import kenlm, rnnlm
+import struct, re, json, sys
+from phonetisaurus import Phonetisaurus
+
+# For some reason this has no effect in OSX+Python2.7
 from json import encoder
 encoder.FLOAT_REPR = lambda o: format(o, '.4f')
 
+
+
 ### Protocol Implementation
-def FormatKenLMResult (response) :
-    return response
+def FormatARPAResult (response, sent) :
+    # Have to add </s>
+    words = sent.split (" ") + ['</s>']
+    result = {}
+    result['scores'] = [(w,s[0],s[1]) for w,s in zip (words,response)]
+    result['total']  = sum ([s[1] for s in result['scores']])
 
-def FormatRnnLMResult (response) :
-    return response
+    return result
 
-def FormatG2PResult (response):
-    return response
+def FormatRnnLMResult (response, words) :
+    result = {}
+    result['scores'] = [(w,s) for w,s in zip (words, response.word_probs)]
+    result['total']  = response.sent_prob
+
+    return result
+
+def FormatG2PResult (responses, m):
+    """
+      Format the G2P response object.  Return
+      a dictionary/list that we can easily serialize
+      and return in a JSON response.
+    """
+    prons = []
+    for response in responses :
+        # Rebuild the original joint-token sequence
+        joint = [ "{0}}}{1}".format (m.FindIsym(g),m.FindOsym(p))
+                  for g, p in zip (response.ILabels, response.OLabels) 
+                  if (g != 0 and p != 0)]
+        pron = {
+            'score' : response.PathWeight,
+            'pron'  : " ".join([m.FindOsym(p) 
+                                 for p in response.Uniques]),
+            'joint' : " ".join(joint)
+        }
+        prons.append (pron)
+
+    return prons
+
 
 # This is just about the simplest possible ngram server
 class NgramServer (Protocol):
@@ -64,24 +97,45 @@ class NgramServer (Protocol):
          Compute the probability of the requested sentence
          for both a standard n-gram model, and an rnnlm
         """
-        #Setup
-        #response = {"kenlm": 0., "rnnlm": 0., "words" : []}
-        words    = re.split(r"\s+", data) + ["</s>"]
-        #response["words"] = [[w, 0., 0.] for w in words]
 
-        #KenLM
-        #response["kenlm"] = model.score (data)
-        #for i, (prob, length) in enumerate (model.full_scores (data)):
-        #    response["words"][i][1] = prob
-
-        #RnnLM
-        #rnnlm_result = rnnlm.EvaluateSentence (words)
-        #response["rnnlm"] = rnnlm_result.sent_prob
-        #for i, prob in enumerate (rnnlm_result.word_probs) :
-        #    response["words"][i][2] = prob
-
-        #Package everything
-        response_string = "RESPONSE" #json.dumps (response)
+        request  = json.loads (data)
+        response = {}
+        # Process a G2P request - how did this turn out so ugly lookin!
+        if 'g2p' in request :
+            response['g2p'] = []
+            for word in request['g2p']['words'] :
+                response['g2p'].append (FormatG2PResult \
+                                        (models['g2p'].Phoneticize \
+                                         (word, request['g2p']['nbest'], 
+                                          request['g2p']['band'],
+                                          request['g2p']['prune'], False), 
+                                         models['g2p']))
+        # Process a request for standard ARPA LM via KenLM bindings
+        elif 'arpa' in request :
+            response['arpa'] = []
+            for sent in request['arpa']['sents'] :
+                response['arpa'].append (FormatARPAResult \
+                                         (models['arpa'].full_scores (sent),
+                                          sent))
+        # Process a request for an RnnLM via the RnnLM bindings
+        elif 'rnnlm' in request :
+            response['rnnlm'] = []
+            for sent in request['rnnlm']['sents'] :
+                # Have to add </s>
+                words = sent.split (" ") + ['</s>']
+                response['rnnlm'].append (FormatRnnLMResult \
+                                          (models['rnnlm'].EvaluateSentence (words),
+                                           words))
+        elif 'prnnlm' in request :
+            response['prnnlm'] = []
+            for sent in request['prnnlm']['sents'] :
+                # Have to add </s>
+                words = sent.split (" ") + ['</s>']
+                response['prnnlm'].append (FormatRnnLMResult \
+                                          (models['prnnlm'].EvaluateSentence (words),
+                                           words))
+        #Package everything we learned and send it back
+        response_string = json.dumps (response)
 
         #First send the size of the full response so the client 
         # will be able to know how much to read
@@ -90,23 +144,27 @@ class NgramServer (Protocol):
         self.transport.write(response_string)
 
 
-def main (rnnlm, port=8000) :
+def main (models, port=8000) :
     f = Factory()
     f.protocol = NgramServer
-    #f.protocol.model = model
-    f.protocol.rnnlm = rnnlm
+    f.protocol.models = models
     reactor.listenTCP(port, f)
     reactor.run()
 
 if __name__ == '__main__':
     import sys, argparse
     
-    example = "USAGE: {0} <rnnlm>".format (sys.argv[0])
+    example = "USAGE: {0} --g2p test.g2p.fst --arpa test.arpa.bin "\
+              "--rnnlm test.rnnlm".format (sys.argv[0])
     parser  = argparse.ArgumentParser (description = example)
-    parser.add_argument ("--rnnlm",   "-r", help="RnnLM to use.", required=True)
-    parser.add_argument ("--port",    "-p", help="Port to run the server on",
+    # Each of these model 'types' should ultimately permit a list
+    parser.add_argument ("--g2p",     "-g",  help="PhonetisaurusG2P model.")
+    parser.add_argument ("--arpa",    "-a",  help="ARPA model in KenLM binary.")
+    parser.add_argument ("--rnnlm",   "-r",  help="RnnLM to use.")
+    parser.add_argument ("--prnnlm",  "-pr", help="Phoneme RnnLM to use.")
+    parser.add_argument ("--port",    "-p",  help="Port to run the server on",
                          type=int, default=8000)
-    parser.add_argument ("--verbose", "-v", help="Verbose mode", default=False, 
+    parser.add_argument ("--verbose", "-v",  help="Verbose mode", default=False, 
                          action="store_true")
     args = parser.parse_args ()
 
@@ -114,10 +172,15 @@ if __name__ == '__main__':
         for k,v in args.__dict__.iteritems () :
             print k, "=", v
 
-    if args.verbose :
-        print >> sys.stderr, "Loading RnnLM..."
-    rnnlm = RnnLMPy (args.rnnlm)
-    if args.verbose :
-        print >> sys.stderr, "Ready!"
+    models = {}
+    if args.g2p :
+        models['g2p']   = Phonetisaurus (args.g2p)
+    if args.arpa : 
+        models['arpa']  = kenlm.LanguageModel (args.arpa)
+    if args.rnnlm : 
+        models['rnnlm'] = rnnlm.RnnLMPy (args.rnnlm)
+    if args.prnnlm :
+        models['prnnlm'] = rnnlm.RnnLMPy (args.prnnlm)
 
-    main (rnnlm)
+    main (models)
+    

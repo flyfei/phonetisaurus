@@ -83,7 +83,7 @@ class PhonetisaurusPy {
 
     VectorFst<StdArc> ofst;
     
-    StdArc::Weight weight_threshold = StdArc::Weight::Zero();
+    StdArc::Weight weight_threshold = threshold;
     StdArc::StateId state_threshold = kNoStateId;
     AnyArcFilter<StdArc> arc_filter;
     vector<StdArc::Weight> distance;
