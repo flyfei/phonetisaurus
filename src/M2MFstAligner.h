@@ -71,7 +71,7 @@ public:
   bool   penalize;
   bool   restrict;
   bool   penalize_em;
-  vector<LogWeight> alpha, beta;
+  //vector<LogWeight> alpha, beta;
   //This will be used during decoding to clean the paths
   set<int>   skipSeqs;
   //OpenFst stuff
@@ -92,9 +92,11 @@ public:
   //Constructors
   M2MFstAligner( );
   //Train from scratch using a dictionary
-  M2MFstAligner( bool _seq1_del, bool _seq2_del, unsigned int _seq1_max, unsigned int _seq2_max, 
+  M2MFstAligner( bool _seq1_del, bool _seq2_del, unsigned int _seq1_max, 
+		 unsigned int _seq2_max, 
 		 string _seq1_sep, string _seq2_sep, string _s1s2_sep,
-		 string _eps, string _skip, bool _penalize, bool _penalize_em, bool _restrict );
+		 string _eps, string _skip, bool _penalize, 
+		 bool _penalize_em, bool _restrict );
   //We've already got a model to go on
   M2MFstAligner( string _model_file, bool _penalize, bool _penalize_em, bool _restrict );
 

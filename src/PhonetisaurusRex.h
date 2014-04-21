@@ -109,7 +109,7 @@ void Entry2FSA (const vector<int>& word, VectorFst<Arc>* fsa, int maxlen,
     fsa->AddArc (i, Arc (word[i], word[i], Arc::Weight::One(), i + j));
     j++;
 
-    while (j <= maxlen && i + j < word.size() - 1) {
+    while (j <= maxlen && i + j <= word.size()) {
       vector<int> subv (&word[i], &word[i+j]);
       SymbolMapM21::const_iterator invmap_iter = invmap.find (subv);
       if (invmap_iter != invmap.end())

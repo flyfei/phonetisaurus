@@ -56,7 +56,11 @@ OUT=$(OBJS) $(BINDIR)/phonetisaurus-align $(BINDIR)/phonetisaurus-arpa2wfst-omeg
 
 CFLAGS ?= -O2     
 THIRD_PARTIES_INCLUDE ?= -I3rdparty/sparsehash -I3rdparty/utfcpp -I3rdparty/rnnlm
-EXTRA=$(CFLAGS) $(THIRD_PARTIES_INCLUDE) $(CXXFLAGS) $(CPPFLAGS) 
+
+# -fopenmp if you want the parallel aligner.  
+# 注意: due to some numerical stability issues, it will generate slightly
+#       difference alignments each time.  Can actually be useful... 
+EXTRA=$(CFLAGS) $(THIRD_PARTIES_INCLUDE) $(CXXFLAGS) $(CPPFLAGS) #-fopenmp
 
 OBJS=util.o ARPA2WFST.o rnnlmlib.o FstPathFinder.o LatticePruner.o \
 	M2MFstAligner.o phonetisaurus-align.o

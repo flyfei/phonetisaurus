@@ -68,12 +68,18 @@ class PhonetisaurusPy {
 
   // The actual phoneticizer routine
   vector<PathData> Phoneticize (const string& word, int nbest = 1, 
-			    int beam = 10000, float threshold = 99) {
+				int beam = 10000, float threshold = 99,
+				bool write_fsts = false) {
     VectorFst<StdArc>* fst = new VectorFst<StdArc> ();
     vector<int> entry = tokenize2ints ((string*)&word, &delim_, isyms_);
     Entry2FSA (entry, fst, imax_, invimap_);
+      
     fst->SetInputSymbols (isyms_);
     fst->SetOutputSymbols (isyms_);
+
+    //Useful for debugging
+    if (write_fsts)
+      fst->Write (word+".fst");
 
     VectorFst<StdArc> ofst;
     
@@ -82,7 +88,13 @@ class PhonetisaurusPy {
     AnyArcFilter<StdArc> arc_filter;
     vector<StdArc::Weight> distance;
 
-    ComposeFst<StdArc>* ifst = new ComposeFst<StdArc>(*fst, model_);
+    //ComposeFst<StdArc>* ifst = new ComposeFst<StdArc>(*fst, model_);
+    VectorFst<StdArc>* ifst = new VectorFst<StdArc>();
+    Compose(*fst, model_, ifst);
+
+    //Useful for debugging
+    if (write_fsts)
+      ifst->Write (word+".lat.fst");
 
     AutoQueue<StdArc::StateId> state_queue (*ifst, &distance, arc_filter);
 

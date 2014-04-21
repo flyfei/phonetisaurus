@@ -32,14 +32,16 @@
 #include "M2MFstAligner.h"
 
 
-
 M2MFstAligner::M2MFstAligner( ){
   //Default constructor
 }
 
-M2MFstAligner::M2MFstAligner( bool _seq1_del, bool _seq2_del, unsigned int _seq1_max, unsigned int _seq2_max, 
-			      string _seq1_sep, string _seq2_sep, string _s1s2_sep, 
-			      string _eps, string _skip, bool _penalize, bool _penalize_em, bool _restrict ){
+M2MFstAligner::M2MFstAligner (bool _seq1_del, bool _seq2_del, 
+			      unsigned int _seq1_max, unsigned int _seq2_max, 
+			      string _seq1_sep, string _seq2_sep, 
+			      string _s1s2_sep, string _eps, string _skip,
+			      bool _penalize, bool _penalize_em, 
+			      bool _restrict) {
   //Base constructor.  Determine whether or not to allow deletions in seq1 and seq2
   // as well as the maximum allowable subsequence size.
   seq1_del = _seq1_del;
@@ -76,7 +78,8 @@ M2MFstAligner::M2MFstAligner( bool _seq1_del, bool _seq2_del, unsigned int _seq1
   penalties.set_empty_key(0);
 }
 
-M2MFstAligner::M2MFstAligner( string _model_file, bool _penalize, bool _penalize_em, bool _restrict  ){
+M2MFstAligner::M2MFstAligner (string _model_file, bool _penalize, 
+			      bool _penalize_em, bool _restrict){
   /*
     Initialize the aligner with a previously trained model.
     The model requires that the first several symbols in the 
@@ -132,29 +135,36 @@ void M2MFstAligner::write_model( string _model_file ){
   return;
 }
 
-void M2MFstAligner::expectation( ){
+void M2MFstAligner::expectation ( ){
   /*
     Here we compute the arc posteriors.  This routine is almost 
     fun to implement in the FST paradigm.
   */
-  for( unsigned int i=0; i<fsas.size(); i++ ){
+  //omp_set_num_threads (4);
+  #pragma omp parallel for
+  for (unsigned int i = 0; i < fsas.size(); i++) {
     //Compute Forward and Backward probabilities
+    vector<LogWeight> alpha, beta;
     ShortestDistance( fsas.at(i), &alpha );
     ShortestDistance( fsas.at(i), &beta, true );
 
     //Compute the normalized Gamma probabilities and 
     // update our running tally
-    for( StateIterator<VectorFst<LogArc> > siter(fsas.at(i)); !siter.Done(); siter.Next() ){
-      LogArc::StateId q = siter.Value();
-      for( ArcIterator<VectorFst<LogArc> > aiter(fsas.at(i),q); !aiter.Done(); aiter.Next() ){
+    for (StateIterator<VectorFst<LogArc> > siter(fsas.at(i)); !siter.Done(); 
+	 siter.Next() ){
+      const LogArc::StateId q = siter.Value();
+      for (ArcIterator<VectorFst<LogArc> > aiter(fsas.at(i), q); 
+	   !aiter.Done(); aiter.Next()) {
 	const LogArc&      arc = aiter.Value();
-	const LogWeight& gamma = Divide(Times(Times(alpha[q], arc.weight), beta[arc.nextstate]), beta[0]); 
+	const LogWeight& gamma = Divide(Times(Times(alpha[q], arc.weight), 
+					      beta[arc.nextstate]), beta[0]); 
 	//Check for any BadValue results, otherwise add to the tally.
         //We call this 'prev_alignment_model' which may seem misleading, but
         // this conventions leads to 'alignment_model' being the final version.
-	if( gamma.Value()==gamma.Value() ){
-	  prev_alignment_model[arc.ilabel] = Plus(prev_alignment_model[arc.ilabel], gamma);
-	  total = Plus(total, gamma);
+	if (gamma.Value() == gamma.Value()) {
+	  prev_alignment_model[arc.ilabel] = 
+	    Plus (prev_alignment_model[arc.ilabel], gamma);
+	  total = Plus (total, gamma);
 	}
       }
     }

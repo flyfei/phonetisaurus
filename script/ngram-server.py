@@ -48,6 +48,14 @@ from json import encoder
 encoder.FLOAT_REPR = lambda o: format(o, '.4f')
 
 ### Protocol Implementation
+def FormatKenLMResult (response) :
+    return response
+
+def FormatRnnLMResult (response) :
+    return response
+
+def FormatG2PResult (response):
+    return response
 
 # This is just about the simplest possible ngram server
 class NgramServer (Protocol):
@@ -57,9 +65,9 @@ class NgramServer (Protocol):
          for both a standard n-gram model, and an rnnlm
         """
         #Setup
-        response = {"kenlm": 0., "rnnlm": 0., "words" : []}
+        #response = {"kenlm": 0., "rnnlm": 0., "words" : []}
         words    = re.split(r"\s+", data) + ["</s>"]
-        response["words"] = [[w, 0., 0.] for w in words]
+        #response["words"] = [[w, 0., 0.] for w in words]
 
         #KenLM
         #response["kenlm"] = model.score (data)
@@ -67,13 +75,13 @@ class NgramServer (Protocol):
         #    response["words"][i][1] = prob
 
         #RnnLM
-        rnnlm_result = rnnlm.EvaluateSentence (words)
-        response["rnnlm"] = rnnlm_result.sent_prob
-        for i, prob in enumerate (rnnlm_result.word_probs) :
-            response["words"][i][2] = prob
+        #rnnlm_result = rnnlm.EvaluateSentence (words)
+        #response["rnnlm"] = rnnlm_result.sent_prob
+        #for i, prob in enumerate (rnnlm_result.word_probs) :
+        #    response["words"][i][2] = prob
 
         #Package everything
-        response_string = json.dumps (response)
+        response_string = "RESPONSE" #json.dumps (response)
 
         #First send the size of the full response so the client 
         # will be able to know how much to read

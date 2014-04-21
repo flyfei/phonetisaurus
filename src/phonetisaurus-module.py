@@ -36,6 +36,7 @@ g2pklass.add_method('Phoneticize', retval('std::vector<PathData>'),
                       param('int', 'nbest'),
                       param('int', 'beam'),
                       param('float', 'threshold'),
+                      param('bool', 'write_fsts'),
                   ]
                 )
 
