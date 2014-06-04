@@ -209,7 +209,7 @@ void NShortestPathSpecialized(const Fst<RevArc> &ifst,
   typedef typename Arc::StateId StateId;
   typedef typename Arc::Weight Weight;
   typedef pair<StateId, Weight> Pair;
-  typedef typename RevArc::Weight RevWeight;
+  //typedef typename RevArc::Weight RevWeight;
 
   if (nbest <= 0) return;
   if ((Weight::Properties() & (kPath | kSemiring)) != (kPath | kSemiring)) {

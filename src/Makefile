@@ -40,10 +40,11 @@ CC=g++
 
 UNAME := $(shell uname)
 ifeq ($(UNAME), Darwin)
-LIBS=-lfst -ldl -lm
+LIBS=-lfst -ldl -lm -Wall -Wno-sign-compare
 RNNSONAME=$(LIBDIR)/librnnlm.dylib
 G2PSONAME=$(LIBDIR)/libphonetisaurus.dylib
 endif
+
 ifeq ($(UNAME), Linux)
 LIBS=-lfst -ldl -lm -lrt
 CC=g++ -std=c++0x -fPIC -Wall -Wno-sign-compare
@@ -130,7 +131,7 @@ $(LIBDIR)/libphonetisaurus.so: Phonetisaurus-binding.o util.o
 	$(CC) $(LIBS) -Wl,-soname,libphonetisaurus.so.0 -shared -lfst Phonetisaurus-binding.o \
 	util.o -I. -o $(LIBDIR)/libphonetisaurus.so -O3 -fPIC -funroll-loops -ffast-math $(LIBS)
 
-$(LIBDOR)/libphonetisaurus.dylib: Phonetisaurus-binding.o util.o
+$(LIBDIR)/libphonetisaurus.dylib: Phonetisaurus-binding.o util.o
 	$(CC) -Wl,-install_name,libphonetisaurus.dylib -shared -lc -lfst Phonetisaurus-binding.o \
 	-I. util.o -o $(LIBDIR)/libphonetisaurus.dylib -O3 -fPIC -funroll-loops \
 	-ffast-math -lm -lpython$(VERSION)
