@@ -223,11 +223,11 @@ void ARPA2WFST::_patch_ilabels( ){
        b.) adding backoff loops to the LM
     
   */
-  for( int i=0; i<isyms->NumSymbols(); i++ ){
+  for (unsigned int i=0; i<isyms->NumSymbols(); i++ ){
     string sym = isyms->Find(i);
     vector<string> parts  = tokenize_utf8_string( &sym, &tie );
     if( parts.size()>1 ){
-      for( int j=0; j<parts.size(); j++ ){
+      for(unsigned int j=0; j<parts.size(); j++ ){
         if( isyms->Find(parts[j])==-1 ){
           //Add the missing symbol
           int k = isyms->AddSymbol(parts[j]);

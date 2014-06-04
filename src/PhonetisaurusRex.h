@@ -37,6 +37,7 @@
 #define PHONETISAURUS_REX_H__
 #include <fst/fstlib.h>
 #include <tr1/unordered_map>
+#include <tr1/unordered_set>
 #include <tr1/functional>
 #include "util.h"
 using namespace fst;
@@ -46,7 +47,7 @@ struct VectorIntHash {
     size_t result = 0;
     tr1::hash<int> hash_fn;
 
-    for (int i = 0; i < v.size(); i++)
+    for (size_t i = 0; i < v.size(); i++)
       result ^= hash_fn (v[i]) + 0x9e3779b9 + (result << 6) 
 	+ (result >> 2);
     return result;
@@ -56,7 +57,7 @@ struct VectorIntHash {
 inline bool operator==(const vector<int>& x, const vector<int>& y) {
   if (x.size() != y.size())
     return false;
-  for (int i = 0; i < x.size(); i++) 
+  for (size_t i = 0; i < x.size(); i++) 
     if (x[i] != y[i]) 
       return false;
   return true;
@@ -74,8 +75,8 @@ int LoadClusters (const SymbolTable* syms, SymbolMap12M* clusters,
     the input symbols table.
   */
   string tie = syms->Find (1);
-  int max_len = 1;
-  for (int i = 2; i < syms->NumSymbols(); i++) {
+  size_t max_len = 1;
+  for (size_t i = 2; i < syms->NumSymbols(); i++) {
     string sym = syms->Find (i);
     vector<int> cluster;
     if (sym.find(tie) != string::npos) {
@@ -99,17 +100,17 @@ int LoadClusters (const SymbolTable* syms, SymbolMap12M* clusters,
 }
 
 template <class Arc>
-void Entry2FSA (const vector<int>& word, VectorFst<Arc>* fsa, int maxlen,
+void Entry2FSA (const vector<int>& word, VectorFst<Arc>* fsa, size_t maxlen,
                 const SymbolMapM21& invmap) {
   fsa->AddState ();
   fsa->SetStart (0);
-  int j;
-  for (int i = 0; i < word.size(); i++) {
+  size_t j;
+  for (size_t i = 0; i < word.size(); i++) {
     j = 1;
     fsa->AddArc (i, Arc (word[i], word[i], Arc::Weight::One(), i + j));
     j++;
 
-    while (j <= maxlen && i + j <= word.size()) {
+    while (j <= maxlen && i + j <= (size_t)word.size()) {
       vector<int> subv (&word[i], &word[i+j]);
       SymbolMapM21::const_iterator invmap_iter = invmap.find (subv);
       if (invmap_iter != invmap.end())
@@ -124,7 +125,7 @@ void Entry2FSA (const vector<int>& word, VectorFst<Arc>* fsa, int maxlen,
 }
 
 struct Path {
-  Path () {}
+  Path () : PathWeight (0.0) {}
   float PathWeight;
   vector<float> PathWeights;
   vector<int> ILabels;
@@ -186,6 +187,7 @@ class M2MPathFilter {
     path->ILabels.push_back (arc.ilabel);
     path->OLabels.push_back (arc.olabel);
     path->PathWeights.push_back (arc.weight.Value());
+    path->PathWeight += arc.weight.Value();
   }
 
  private:

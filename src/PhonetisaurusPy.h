@@ -110,7 +110,7 @@ class PhonetisaurusPy {
 			     &path_filter, beam, opts);
 
     vector<PathData> paths;
-    for (int i = 0; i < path_filter.ordered_paths.size(); i++) {
+    for (size_t i = 0; i < path_filter.ordered_paths.size(); i++) {
       const vector<int>& u = path_filter.ordered_paths[i];
       const Path& orig     = path_filter.path_map[u];
       PathData path = PathData (orig.PathWeight, orig.PathWeights, 

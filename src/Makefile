@@ -37,16 +37,18 @@ INSTALLBIN=/usr/local/bin
 INSTALLLIB=/usr/local/lib
 
 CC=g++
+
 UNAME := $(shell uname)
 ifeq ($(UNAME), Darwin)
 LIBS=-lfst -ldl -lm
-RNNSONAME=$(DEST)/librnnlm.dylib
-G2PSONAME=$(DEST)/libphonetisaurus.dylib
+RNNSONAME=$(LIBDIR)/librnnlm.dylib
+G2PSONAME=$(LIBDIR)/libphonetisaurus.dylib
 endif
 ifeq ($(UNAME), Linux)
 LIBS=-lfst -ldl -lm -lrt
-RNNSONAME=$(DEST)/librnnlm.so
-G2PSONAME=$(DEST)/libphonetisaurus.so
+CC=g++ -std=c++0x -fPIC -Wall -Wno-sign-compare
+RNNSONAME=$(LIBDIR)/librnnlm.so
+G2PSONAME=$(LIBDIR)/libphonetisaurus.so
 endif
 
 %.o: %.cc 
@@ -89,20 +91,20 @@ $(BINDIR)/phonetisaurus-arpa2wfst-omega: ARPA2WFST.o util.o phonetisaurus-arpa2w
 	-o $(BINDIR)/phonetisaurus-arpa2wfst-omega $(LIBS)
 
 #RnnLM bindings
-rnnlm-binding: $(DEST)/RnnLM.so
+rnnlm-binding: $(RNNPY)/RnnLM.so
 
-$(DEST)/RnnLM.so: $(RNNSONAME) RnnLMPy-binding.o
-	$(CC) -shared $(RT) -fPIC RnnLMPy-binding.o -o $(RNNPY)/RnnLM.so -L$(LIBDIR) \
+$(RNNPY)/RnnLM.so: $(RNNSONAME) RnnLMPy-binding.o
+	$(CC) -shared $(LIBS) -fPIC RnnLMPy-binding.o -o $(RNNPY)/RnnLM.so -L$(LIBDIR) \
 	-I3rdparty/rnnlm rnnlmlib.o -lpython$(VERSION) -lrnnlm -lfst -O3 \
-	-funroll-loops -ffast-math -lm
+	-funroll-loops -ffast-math $(LIBS)
 	touch $(RNNPY)/__init__.py
 
-$(DEST)/librnnlm.so: RnnLMPy-binding.o
+$(LIBDIR)/librnnlm.so: RnnLMPy-binding.o
 	$(CC) -Wl,-soname,librnnlm.so.0 -shared -lfst RnnLMPy-binding.o \
 	rnnlmlib.o -I. -o $(LIBDIR)/librnnlm.so -O3 -fPIC -funroll-loops -ffast-math -lm
 	cd $(LIBDIR); ln -s librnnlm.so librnnlm.so.0; cd -;
 
-$(DEST)/librnnlm.dylib: RnnLMPy-binding.o
+$(LIBDIR)/librnnlm.dylib: RnnLMPy-binding.o
 	$(CC) -Wl,-install_name,librnnlm.so -shared -lc -lfst RnnLMPy-binding.o \
 	rnnlmlib.o -I. -o $(LIBDIR)/librnnlm.dylib -O3 -fPIC -funroll-loops \
 	-ffast-math -lm -lpython$(VERSION)
@@ -120,22 +122,22 @@ rnnlmlib.o : 3rdparty/rnnlm/rnnlmlib.cpp
 phonetisaurus-binding: $(PYLIB)/Phonetisaurus.so
 
 $(PYLIB)/Phonetisaurus.so: $(G2PSONAME) Phonetisaurus-binding.o util.o
-	$(CC) -shared $(RT) -fPIC Phonetisaurus-binding.o util.o \
+	$(CC) -shared $(LIBS) -fPIC Phonetisaurus-binding.o util.o \
 	-o $(PYLIB)/Phonetisaurus.so -I3rdparty/sparsehash -I3rdparty/utfcpp \
-	-lpython$(VERSION) -L. -L$(LIBDIR) -lphonetisaurus -lfst -O3 -lm
+	-lpython$(VERSION) -L. -L$(LIBDIR) -lphonetisaurus -lfst -O3 $(LIBS)
 
-$(LIB)/libphonetisaurus.so: Phonetisaurus-binding.o util.o
-	$(CC) -Wl,-soname,libphonetisaurus.so.0 -shared -lfst Phonetisaurus-binding.o \
-	util.o -I. -o $(LIB)/libphonetisaurus.so -O3 -fPIC -funroll-loops -ffast-math -lm
+$(LIBDIR)/libphonetisaurus.so: Phonetisaurus-binding.o util.o
+	$(CC) $(LIBS) -Wl,-soname,libphonetisaurus.so.0 -shared -lfst Phonetisaurus-binding.o \
+	util.o -I. -o $(LIBDIR)/libphonetisaurus.so -O3 -fPIC -funroll-loops -ffast-math $(LIBS)
 
-$(LIB)/libphonetisaurus.dylib: Phonetisaurus-binding.o util.o
+$(LIBDOR)/libphonetisaurus.dylib: Phonetisaurus-binding.o util.o
 	$(CC) -Wl,-install_name,libphonetisaurus.dylib -shared -lc -lfst Phonetisaurus-binding.o \
 	-I. util.o -o $(LIBDIR)/libphonetisaurus.dylib -O3 -fPIC -funroll-loops \
 	-ffast-math -lm -lpython$(VERSION)
 
 Phonetisaurus-binding.o: Phonetisaurus-binding.cc
-	$(CC) -O3 -fPIC -funroll-loops -ffast-math -lm \
-	-I. -I3rdparty/sparsehash -I3rdparty/utfcpp -I$(PYTHON_H) -c $(<) -o $(@)
+	$(CC) $(LIBS) -O3 -fPIC -funroll-loops -ffast-math \
+	-I. -I3rdparty/sparsehash -I3rdparty/utfcpp -I$(PYTHON_H) $(LIBS) -c $(<) -o $(@)
 
 Phonetisaurus-binding.cc: phonetisaurus-module.py
 	python phonetisaurus-module.py > Phonetisaurus-binding.cc
@@ -151,7 +153,7 @@ clean: clean-bindings
 	$(RM) $(OUT) $(TMP) *.o
 
 clean-bindings:
-	$(RM) $(DEST)/*.so $(LIBDIR)/*.so.0 rnnlmlib.o RnnLMPy-binding.o \
+	$(RM) $(LIBDIR)/*.so $(LIBDIR)/*.so.0 rnnlmlib.o RnnLMPy-binding.o \
 	RnnLMPy-binding.cc $(LIBDIR)/*.dylib Phonetisaurus-binding.o \
 	Phonetisaurus-binding.cc $(PYLIB)/*.so $(RNNPY)/*.so \
 	$(PYLIB)/*.pyc $(RNNPY)/*.pyc

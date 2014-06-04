@@ -141,7 +141,7 @@ void M2MFstAligner::expectation ( ){
     fun to implement in the FST paradigm.
   */
   //omp_set_num_threads (4);
-  #pragma omp parallel for
+  //#pragma omp parallel for
   for (unsigned int i = 0; i < fsas.size(); i++) {
     //Compute Forward and Backward probabilities
     vector<LogWeight> alpha, beta;
@@ -258,8 +258,12 @@ void M2MFstAligner::_conditional_max( bool y_given_x ){
     alignment_model[labi]      = arc.weight;
     prev_alignment_model[labi] = LogWeight::Zero();
   }
-  delete joint, marg, cond, dmarg;
-  delete misyms, mosyms;
+  delete joint;
+  delete marg;
+  delete cond;
+  delete dmarg;
+  delete misyms;
+  delete mosyms;
   return;
 }
 
@@ -433,22 +437,16 @@ void M2MFstAligner::Sequences2FST( VectorFst<LogArc>* fst, vector<string>* seq1,
 	prev_alignment_model.insert( pair<LogArc::Label,LogWeight>(arc.ilabel, arc.weight) );
 	string sym = isyms->Find(arc.ilabel);
 	size_t del = sym.find("}");
-	size_t ski = sym.find("_");
 	size_t chu = sym.find("|");
 	int k=1; int l=1;
-	bool xd = false; bool yd = false;
+
 	if( chu!=string::npos ){
 	  if( chu<del )
 	    k += 1;
 	  else
 	    l += 1;
 	}
-	if( ski!=string::npos ){
-	  if( ski<del )
-	    xd = true;
-	  else
-	    yd = true;
-	}
+
 	_compute_penalties( arc.ilabel, k, l, false, false );
       }else{
 	prev_alignment_model[arc.ilabel] = Plus(prev_alignment_model[arc.ilabel],arc.weight);
