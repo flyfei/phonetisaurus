@@ -67,6 +67,11 @@ def FormatRnnLMResult (response, words) :
 
     return result
 
+def mapsym (sym) :
+    if sym == "<eps>":
+        return "_"
+    return sym
+
 def FormatG2PResult (responses, m):
     """
       Format the G2P response object.  Return
@@ -76,9 +81,9 @@ def FormatG2PResult (responses, m):
     prons = []
     for response in responses :
         # Rebuild the original joint-token sequence
-        joint = [ "{0}}}{1}".format (m.FindIsym(g),m.FindOsym(p))
+        joint = [ "{0}}}{1}".format (m.FindIsym(g),mapsym (m.FindOsym(p)))
                   for g, p in zip (response.ILabels, response.OLabels) 
-                  if (g != 0 and p != 0)]
+                  if not (g == 0 and p == 0)]
         pron = {
             'score' : response.PathWeight,
             'pron'  : " ".join([m.FindOsym(p) 

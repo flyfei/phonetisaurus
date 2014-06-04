@@ -144,7 +144,7 @@ install: all
 	install -c $(LIBDIR)/$(RNNSONAME) $(INSTALLLIB)/$(RNNSONAME)
 
 clean: clean-bindings
-	$(RM) $(OUT) $(TMP)
+	$(RM) $(OUT) $(TMP) *.o
 
 clean-bindings:
 	$(RM) $(DEST)/*.so $(LIBDIR)/*.so.0 rnnlmlib.o RnnLMPy-binding.o \

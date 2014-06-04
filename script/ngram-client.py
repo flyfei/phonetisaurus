@@ -177,6 +177,20 @@ if __name__ == "__main__" :
 
     response  = client.G2PRequest ([args.word], args.nbest, args.band, args.prune)
     rescores  = []
+
+    def doone (joint) :
+        print joint
+        arpar = client.ARPARequest ([joint])
+        print -arpar['arpa'][0]['total'] * math.log(10)
+        for chunk in  arpar['arpa'][0]['scores']:
+            print "{0}\t{1:.4f}\t{2}".format (chunk[0], -chunk[1]*math.log(10), chunk[2])        
+    doone (response['g2p'][0][0]['joint'])
+    doone (response['g2p'][0][1]['joint'])
+    doone (response['g2p'][0][2]['joint'])
+
+
+
+    """
     for k,word in enumerate(response['g2p']) :
         word_scores = {'word' : args.word,
                        'nbest' : [] }
@@ -203,6 +217,7 @@ if __name__ == "__main__" :
             #Finally append the score
             nbest_scores.append (log_sum)
             word_scores['nbest'].append (nbest_scores)
+
         #The G2P model
         print_nbest (word_scores, 1)
         #The ARPA model (should be nearly the same as G2P)
@@ -214,4 +229,4 @@ if __name__ == "__main__" :
         #The rescaled, combined score
         print_nbest (word_scores, 5)
         rescores.append (word_scores)
-
+    """
