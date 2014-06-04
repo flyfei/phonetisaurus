@@ -1,6 +1,7 @@
 #!/usr/bin/python
-from phonetisaurus import Phonetisaurus
 import sys, os, itertools
+sys.path.append (os.getcwd())
+from phonetisaurus import Phonetisaurus
 
 
 def LoadTestSet (testfile) :
