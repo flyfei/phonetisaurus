@@ -175,58 +175,29 @@ if __name__ == "__main__" :
 
     client  = NGramClient ()
 
+    print "Raw G2P:"
     response  = client.G2PRequest ([args.word], args.nbest, args.band, args.prune)
+    print response
     rescores  = []
 
-    def doone (joint) :
+    def DoOneARPA (joint) :
         print joint
         arpar = client.ARPARequest ([joint])
         print -arpar['arpa'][0]['total'] * math.log(10)
         for chunk in  arpar['arpa'][0]['scores']:
             print "{0}\t{1:.4f}\t{2}".format (chunk[0], -chunk[1]*math.log(10), chunk[2])        
-    doone (response['g2p'][0][0]['joint'])
-    doone (response['g2p'][0][1]['joint'])
-    doone (response['g2p'][0][2]['joint'])
 
+    def DoOneRnnLM (joint) :
+        print joint
+        arpar = client.RnnLMRequest ([joint])
+        print -arpar['rnnlm'][0]['total'] * math.log(10)
+        for chunk in  arpar['rnnlm'][0]['scores']:
+            print "{0}\t{1:.4f}".format (chunk[0], -chunk[1]*math.log(10))        
 
+    #DoOneARPA (response['g2p'][0][0]['joint'])
+    print "\nPhoneme-only ARPA:"
+    DoOneARPA  (response['g2p'][0][0]['pron'])
 
-    """
-    for k,word in enumerate(response['g2p']) :
-        word_scores = {'word' : args.word,
-                       'nbest' : [] }
-        for n in word :
-            joint  = n['joint']
-            norm   = math.log(len(joint.split(" ")), 10)
-            pnorm  = math.log(len(n['pron'].split(" ")), 10)
-            nbest_scores = [n['pron'], (-n['score']/math.log(10.)) - norm]
-            arpar  = client.ARPARequest ([joint])
-            nbest_scores.append (arpar['arpa'][0]['total'] - norm)
-            rnnlmr = client.RnnLMRequest([joint])
-            nbest_scores.append (rnnlmr['rnnlm'][0]['total'] - norm)
-            prnnlmr = client.PhoneRnnLMRequest([n['pron']])
-            nbest_scores.append (prnnlmr['prnnlm'][0]['total'] - pnorm)
+    print "\nG2P RnnLM:"
+    DoOneRnnLM (response['g2p'][0][0]['joint'])
 
-            #Scale the model values by the lambda priors
-            posts = [ math.log (lambdas[i-1],10) + nbest_scores[i] 
-                      for i in xrange(1,len(nbest_scores)) ]
-            #Compute the rescaled score
-            log_sum = posts[0]
-            for i in xrange(1,len(posts)) :
-                log_sum = math.log ((math.pow (10, log_sum) + math.pow (10, posts[i])),
-                          10)
-            #Finally append the score
-            nbest_scores.append (log_sum)
-            word_scores['nbest'].append (nbest_scores)
-
-        #The G2P model
-        print_nbest (word_scores, 1)
-        #The ARPA model (should be nearly the same as G2P)
-        print_nbest (word_scores, 2)
-        #The RnnLM model
-        print_nbest (word_scores, 3)
-        #The PRnnLM model
-        print_nbest (word_scores, 4)
-        #The rescaled, combined score
-        print_nbest (word_scores, 5)
-        rescores.append (word_scores)
-    """

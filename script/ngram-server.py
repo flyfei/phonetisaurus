@@ -40,8 +40,9 @@
 # stubs for KenLM, but we don't use these currently for the G2P.
 from twisted.internet.protocol import Protocol, Factory
 from twisted.internet import reactor
+import struct, re, json, sys, os
+sys.path.append (os.getcwd())
 import kenlm, rnnlm
-import struct, re, json, sys
 from phonetisaurus import Phonetisaurus
 
 # For some reason this has no effect in OSX+Python2.7
