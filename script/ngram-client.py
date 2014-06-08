@@ -177,7 +177,10 @@ if __name__ == "__main__" :
 
     print "Raw G2P:"
     response  = client.G2PRequest ([args.word], args.nbest, args.band, args.prune)
-    print response
+    print json.dumps(response, 
+                     separators=(',', ':'), 
+                     sort_keys=True,
+                     indent=2)
     rescores  = []
 
     def DoOneARPA (joint) :
