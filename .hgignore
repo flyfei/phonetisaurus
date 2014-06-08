@@ -11,7 +11,6 @@ phonetisaurus-arpa2wfst-omega$
 phonetisaurus-g2p$
 phonetisaurus-g2p-omega$
 .*\.pyc$
-rnnlm/
 models/
 .*\.egg-info/
 build/
