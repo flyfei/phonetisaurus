@@ -109,7 +109,7 @@ int main (int argc, char* argv[]) {
 	 !aiter.Done(); aiter.Next()) {
       const StdArc& arc = aiter.Value();
       string label = isyms->Find (arc.ilabel);
-      if (arc.ilabel != 0) {
+      if (arc.ilabel > 1) {
 	vector<int> chunks = rnnlm.GetJointVocab (label);
 	for (int i = 0; i < chunks.size(); i++) {
 	  string chunk = rnnlm.GetString (chunks[i]);
@@ -129,14 +129,14 @@ int main (int argc, char* argv[]) {
 	    last.push_back (q);
 	  }
 	}
-      } else {
+      } else if (arc.ilabel == 0) {
 	vector<string> history = titer->history_;
 	history.push_back ("</s>");
 	UttResult result = rnnlm.EvaluateSentence (history);
 	/*
 	for (int j = 0; j < history.size(); j++)
 	  cout << history[j] << " ";
-	cout << result.sent_prob << endl;
+	cout << result.sent_prob << " " << n.state_ << endl;
 	*/
 	Token q (arc.nextstate, 
 		 -1 * result.sent_prob,
@@ -146,8 +146,9 @@ int main (int argc, char* argv[]) {
 	  );
 	uset.insert (q);
 	heap.Insert (q);
+      } else if (arc.ilabel == 1) {
 	if (fst->Final (arc.nextstate) != StdArc::Weight::Zero()) {
-	  last.push_back (q);
+	  last.push_back (*titer);
 	}
       }
     }
@@ -155,6 +156,7 @@ int main (int argc, char* argv[]) {
 
   vector<Token> vv;
   Token* tp = &last[0];
+
   cout << tp->weight_  << "\t";
   for (int i = 0; i < tp->history_.size(); i++)
     cout << tp->history_[i] << ((i == tp->history_.size()) ? "" : " ");

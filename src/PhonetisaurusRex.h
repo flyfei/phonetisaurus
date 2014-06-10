@@ -125,7 +125,9 @@ void Entry2FSA (const vector<int>& word, VectorFst<Arc>* fsa, size_t maxlen,
   if (superfinal) {
     fsa->AddState();
     fsa->AddArc (word.size(), Arc (0, 0, Arc::Weight::One(), word.size()+1));
-    fsa->SetFinal (word.size()+1, Arc::Weight::One());
+    fsa->AddState();
+    fsa->AddArc (word.size()+1, Arc (1, 1, Arc::Weight::One(), word.size()+2));
+    fsa->SetFinal (word.size()+2, Arc::Weight::One());
   } else {
     fsa->SetFinal (word.size(), Arc::Weight::One());
   }
