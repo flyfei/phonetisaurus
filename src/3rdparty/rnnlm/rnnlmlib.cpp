@@ -66,60 +66,63 @@ void CRnnLM::readWord(char *word, FILE *fin)
     int a=0, ch;
 
     while (!feof(fin)) {
-	ch=fgetc(fin);
+      ch = fgetc(fin);
 
-	if (ch==13) continue;
+      if (ch == 13) continue;
 
-	if ((ch==' ') || (ch=='\t') || (ch=='\n')) {
-    	    if (a>0) {
-                if (ch=='\n') ungetc(ch, fin);
-                break;
-            }
+      if ((ch == ' ') || (ch=='\t') || (ch=='\n')) {
+	if (a > 0) {
+	  if (ch == '\n') ungetc (ch, fin);
+	  break;
+	}
 
-            if (ch=='\n') {
-                strcpy(word, (char *)"</s>");
-                return;
-            }
-            else continue;
-        }
+	if (ch == '\n') {
+	  strcpy(word, (char *)"</s>");
+	  return;
+	}
+	else continue;
+      }
 
-        word[a]=ch;
-        a++;
+      word[a] = ch;
+      a++;
 
-        if (a>=MAX_STRING) {
-            //printf("Too long word found!\n");   //truncate too long words
-            a--;
-        }
+      if (a >= MAX_STRING) {
+	//printf("Too long word found!\n");   //truncate too long words
+	a--;
+      }
     }
     word[a]=0;
 }
 
-int CRnnLM::getWordHash(char *word)
+int CRnnLM::getWordHash (char *word)
 {
     unsigned int hash, a;
     
-    hash=0;
-    for (a=0; a<strlen(word); a++) hash=hash*237+word[a];
-    hash=hash%vocab_hash_size;
+    hash = 0;
+    for (a = 0; a < strlen (word); a++) 
+      hash = hash * 237 + word[a];
+    hash = hash % vocab_hash_size;
     
     return hash;
 }
 
-int CRnnLM::searchVocab(char *word)
+int CRnnLM::searchVocab (char *word)
 {
     int a;
     unsigned int hash;
     
-    hash=getWordHash(word);
+    hash = getWordHash (word);
     
-    if (vocab_hash[hash]==-1) return -1;
-    if (!strcmp(word, vocab[vocab_hash[hash]].word)) return vocab_hash[hash];
+    if (vocab_hash[hash]==-1) 
+      return -1;
+    if (!strcmp (word, vocab[vocab_hash[hash]].word)) 
+      return vocab_hash[hash];
     
     for (a=0; a<vocab_size; a++) {				//search in vocabulary
-        if (!strcmp(word, vocab[a].word)) {
-    	    vocab_hash[hash]=a;
-    	    return a;
-    	}
+      if (!strcmp(word, vocab[a].word)) {
+	vocab_hash[hash]=a;
+	return a;
+      }
     }
 
     return -1;							//return OOV if not found
@@ -335,6 +338,16 @@ void CRnnLM::restoreContext2()
     int a;
     
     for (a=0; a<layer1_size; a++) neu1[a].ac=neu1b2[a].ac;
+}
+
+void CRnnLM::SaveContext (std::string& id) {
+  for (int a = 0; a < layer1_size; a++)
+    NeuMap[id].neu[a].ac = neu1[a].ac;
+}
+
+void CRnnLM::RestoreContext (std::string& id) {
+  for (int a = 0; a < layer1_size; a++)
+    neu1[a].ac = NeuMap[id].neu[a].ac;
 }
 
 void CRnnLM::initNet()
@@ -687,6 +700,31 @@ void CRnnLM::goToDelimiter(int delim, FILE *fi)
     }
 }
 
+void CRnnLM::MapJointToken (vocab_word* word) {
+  string delim = "}";
+  string tmp   = word->word;
+  token_map[searchVocab (word->word)] = tmp;
+
+  vector<string> parts = tokenize_utf8_string (&tmp, &delim);
+  if (parts.size() == 2) {
+    if (joint_map.find (parts[0]) == joint_map.end()) {
+      vector<int> tokens;
+      tokens.push_back (searchVocab (word->word));
+      joint_map[parts[0]] = tokens;
+    } else {
+      joint_map[parts[0]].push_back (searchVocab (word->word));
+    }
+  } else {
+    vector<int> tokens;
+    tokens.push_back (searchVocab (word->word));
+    joint_map[tmp] = tokens;
+  }
+}
+
+vector<int>& CRnnLM::SearchJointVocab (string& word) {
+  return joint_map[word];
+}
+
 void CRnnLM::restoreNet()    //will read whole network structure
 {
     FILE *fi;
@@ -798,19 +836,26 @@ void CRnnLM::restoreNet()    //will read whole network structure
     
     //read normal vocabulary
     if (vocab_max_size<vocab_size) {
-	if (vocab!=NULL) free(vocab);
+	if (vocab!=NULL) 
+	  free(vocab);
         vocab_max_size=vocab_size+1000;
-        vocab=(struct vocab_word *)calloc(vocab_max_size, sizeof(struct vocab_word));    //initialize memory for vocabulary
+        vocab = (struct vocab_word *) 
+	  calloc (vocab_max_size, sizeof(struct vocab_word));    
+        //initialize memory for vocabulary
     }
-    //
+
     goToDelimiter(':', fi);
     for (a=0; a<vocab_size; a++) {
 	//fscanf(fi, "%d%d%s%d", &b, &vocab[a].cn, vocab[a].word, &vocab[a].class_index);
 	fscanf(fi, "%d%d", &b, &vocab[a].cn);
 	readWord(vocab[a].word, fi);
+	if (joint == true)
+	  MapJointToken (&vocab[a]);
+
 	fscanf(fi, "%d", &vocab[a].class_index);
 	//printf("%d  %d  %s  %d\n", b, vocab[a].cn, vocab[a].word, vocab[a].class_index);
     }
+
     //
     if (neu0==NULL) initNet();		//memory allocation here
     //
@@ -983,7 +1028,7 @@ void CRnnLM::netReset()   //cleans hidden layer activation + bptt history
     for (a=0; a<MAX_NGRAM_ORDER; a++) history[a]=0;
 }
 
-void CRnnLM::matrixXvector(struct neuron *dest, struct neuron *srcvec, struct synapse *srcmatrix, int matrix_width, int from, int to, int from2, int to2, int type)
+void CRnnLM::matrixXvector (struct neuron *dest, struct neuron *srcvec, struct synapse *srcmatrix, int matrix_width, int from, int to, int from2, int to2, int type)
 {
     int a, b;
     real val1, val2, val3, val4;
@@ -1848,8 +1893,9 @@ void CRnnLM::testNbest()
     while (1) {
 	if (last_word==0) {
 	    fscanf(fi, "%s", ut2);
-	    
-	    if (nbest_cn==1) saveContext2();		//save context after processing first sentence in nbest
+	    //save context after processing first sentence in nbest
+	    if (nbest_cn==1) 
+	      saveContext2();	
 	    
 	    if (strcmp(ut1, ut2)) {
 		strcpy(ut1, ut2);

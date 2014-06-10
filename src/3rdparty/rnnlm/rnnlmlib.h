@@ -16,8 +16,17 @@
 #define exp10(n) pow((double)10,(4-n))
 #endif 
 
+#include <fst/fstlib.h>
+#include <tr1/unordered_map>
+#include <vector>
+#include "util.h"
+using namespace fst;
+
+const int MAX_NGRAM_ORDER=20;
 typedef double real;		// doubles for NN weights
 typedef double direct_t;	// doubles for ME weights; TODO: check why floats are not enough for RNNME (convergence problems)
+typedef std::tr1::unordered_map<std::string, std::vector<int> > JointMap;
+typedef std::tr1::unordered_map<int, std::string> TokenMap;
 
 struct neuron {
     real ac;		//actual value stored in neuron
@@ -36,106 +45,126 @@ struct vocab_word {
     int class_index;
 };
 
-const unsigned int PRIMES[]={108641969, 116049371, 125925907, 133333309, 145678979, 175308587, 197530793, 234567803, 251851741, 264197411, 330864029, 399999781,
-407407183, 459258997, 479012069, 545678687, 560493491, 607407037, 629629243, 656789717, 716048933, 718518067, 725925469, 733332871, 753085943, 755555077,
-782715551, 790122953, 812345159, 814814293, 893826581, 923456189, 940740127, 953085797, 985184539, 990122807};
-const unsigned int PRIMES_SIZE=sizeof(PRIMES)/sizeof(PRIMES[0]);
+struct RNNToken {
+  RNNToken* parent;
+  struct neuron* neu;
+  int history[MAX_NGRAM_ORDER];
+  vector<int> bptt_history;
+};
 
-const int MAX_NGRAM_ORDER=20;
+typedef std::tr1::unordered_map<std::string, RNNToken> NeuTokenMap;
+
+const unsigned int PRIMES [] = {
+  108641969, 116049371, 125925907, 133333309, 
+  145678979, 175308587, 197530793, 234567803, 
+  251851741, 264197411, 330864029, 399999781,
+  407407183, 459258997, 479012069, 545678687, 
+  560493491, 607407037, 629629243, 656789717, 
+  716048933, 718518067, 725925469, 733332871, 
+  753085943, 755555077, 782715551, 790122953, 
+  812345159, 814814293, 893826581, 923456189, 
+  940740127, 953085797, 985184539, 990122807
+};
+
+const unsigned int PRIMES_SIZE=sizeof(PRIMES)/sizeof(PRIMES[0]);
 
 enum FileTypeEnum {TEXT, BINARY, COMPRESSED};		//COMPRESSED not yet implemented
 
-class CRnnLM{
-public:
-    char train_file[MAX_STRING];
-    char valid_file[MAX_STRING];
-    char test_file[MAX_STRING];
-    char rnnlm_file[MAX_STRING];
-    char lmprob_file[MAX_STRING];
-    
-    int rand_seed;
-    
-    int debug_mode;
-    
-    int version;
-    int filetype;
-    
-    int use_lmprob;
-    real lambda;
-    real gradient_cutoff;
-    
-    real dynamic;
-    
-    real alpha;
-    real starting_alpha;
-    int alpha_divide;
-    double logp, llogp;
-    float min_improvement;
-    int iter;
-    int vocab_max_size;
-    int vocab_size;
-    int train_words;
-    int train_cur_pos;
-    int counter;
-    
-    int one_iter;
-    int anti_k;
-    
-    real beta;
-    
-    int class_size;
-    int **class_words;
-    int *class_cn;
-    int *class_max_cn;
-    int old_classes;
-    
-    struct vocab_word *vocab;
-    void sortVocab();
-    int *vocab_hash;
-    int vocab_hash_size;
-    
-    int layer0_size;
-    int layer1_size;
-    int layerc_size;
-    int layer2_size;
-    
-    long long direct_size;
-    int direct_order;
-    int history[MAX_NGRAM_ORDER];
-    
-    int bptt;
-    int bptt_block;
-    int *bptt_history;
-    neuron *bptt_hidden;
-    struct synapse *bptt_syn0;
-    
-    int gen;
+class CRnnLM {
+ public:
+  char train_file[MAX_STRING];
+  char valid_file[MAX_STRING];
+  char test_file[MAX_STRING];
+  char rnnlm_file[MAX_STRING];
+  char lmprob_file[MAX_STRING];
+  bool joint;
+  JointMap joint_map;
+  TokenMap token_map;
+  NeuTokenMap NeuMap;
 
-    int independent;
+  int rand_seed;
     
-    struct neuron *neu0;		//neurons in input layer
-    struct neuron *neu1;		//neurons in hidden layer
-    struct neuron *neuc;		//neurons in hidden layer
-    struct neuron *neu2;		//neurons in output layer
+  int debug_mode;
+    
+  int version;
+  int filetype;
+    
+  int use_lmprob;
+  real lambda;
+  real gradient_cutoff;
+    
+  real dynamic;
+    
+  real alpha;
+  real starting_alpha;
+  int alpha_divide;
+  double logp, llogp;
+  float min_improvement;
+  int iter;
+  int vocab_max_size;
+  int vocab_size;
+  int train_words;
+  int train_cur_pos;
+  int counter;
+    
+  int one_iter;
+  int anti_k;
+    
+  real beta;
+    
+  int class_size;
+  int **class_words;
+  int *class_cn;
+  int *class_max_cn;
+  int old_classes;
+    
+  struct vocab_word *vocab;
+  void sortVocab();
+  int *vocab_hash;
+  int vocab_hash_size;
+    
+  int layer0_size;
+  int layer1_size;
+  int layerc_size;
+  int layer2_size;
+    
+  long long direct_size;
+  int direct_order;
+  int history[MAX_NGRAM_ORDER];
+    
+  int bptt;
+  int bptt_block;
+  int *bptt_history;
+  neuron *bptt_hidden;
+  struct synapse *bptt_syn0;
+    
+  int gen;
 
-    struct synapse *syn0;		//weights between input and hidden layer
-    struct synapse *syn1;		//weights between hidden and output layer (or hidden and compression if compression>0)
-    struct synapse *sync;		//weights between hidden and compression layer
-    direct_t *syn_d;		//direct parameters between input and output layer (similar to Maximum Entropy model parameters)
+  int independent;
     
-    //backup used in training:
-    struct neuron *neu0b;
-    struct neuron *neu1b;
-    struct neuron *neucb;
-    struct neuron *neu2b;
+  struct neuron *neu0;		//neurons in input layer
+  struct neuron *neu1;		//neurons in hidden layer
+  struct neuron *neuc;		//neurons in hidden layer
+  struct neuron *neu2;		//neurons in output layer
 
-    struct synapse *syn0b;
-    struct synapse *syn1b;
-    struct synapse *syncb;
-    direct_t *syn_db;
+  struct synapse *syn0;		//weights between input and hidden layer
+  struct synapse *syn1;		//weights between hidden and output layer (or hidden and compression if compression>0)
+  struct synapse *sync;		//weights between hidden and compression layer
+  direct_t *syn_d;		//direct parameters between input and output layer (similar to Maximum Entropy model parameters)
     
-    //backup used in n-bset rescoring:
-    struct neuron *neu1b2;
+  //backup used in training:
+  struct neuron *neu0b;
+  struct neuron *neu1b;
+  struct neuron *neucb;
+  struct neuron *neu2b;
+
+  struct synapse *syn0b;
+  struct synapse *syn1b;
+  struct synapse *syncb;
+  direct_t *syn_db;
+    
+  //backup used in n-bset rescoring:
+  struct neuron *neu1b2;
     
     
     //public:
@@ -145,6 +174,7 @@ public:
     CRnnLM()		//constructor initializes variables
     {
 	version=10;
+	joint=true;
 	filetype=TEXT;
 	
 	use_lmprob=0;
@@ -274,7 +304,12 @@ public:
 	    //todo: free bptt variables too
 	}
     }
-    
+
+    void MapJointToken (vocab_word* word);
+    vector<int>& SearchJointVocab (string& word);
+    void SaveContext (std::string& id);
+    void RestoreContext (std::string& id);
+
     real random(real min, real max);
 
     void setTrainFile(char *str);

@@ -94,30 +94,30 @@ $(BINDIR)/phonetisaurus-arpa2wfst-omega: ARPA2WFST.o util.o phonetisaurus-arpa2w
 #RnnLM bindings
 rnnlm-binding: $(RNNPY)/RnnLM.so
 
-$(RNNPY)/RnnLM.so: $(RNNSONAME) RnnLMPy-binding.o
-	$(CC) -shared $(LIBS) -fPIC RnnLMPy-binding.o -o $(RNNPY)/RnnLM.so -L$(LIBDIR) \
+$(RNNPY)/RnnLM.so: $(RNNSONAME) RnnLMPy-binding.o util.o
+	$(CC) util.o -shared $(LIBS) -fPIC RnnLMPy-binding.o -o $(RNNPY)/RnnLM.so -L$(LIBDIR) \
 	-I3rdparty/rnnlm rnnlmlib.o -lpython$(VERSION) -lrnnlm -lfst -O3 \
 	-funroll-loops -ffast-math $(LIBS)
 	touch $(RNNPY)/__init__.py
 
-$(LIBDIR)/librnnlm.so: RnnLMPy-binding.o
-	$(CC) -Wl,-soname,librnnlm.so.0 -shared -lfst RnnLMPy-binding.o \
-	rnnlmlib.o -I. -o $(LIBDIR)/librnnlm.so -O3 -fPIC -funroll-loops -ffast-math -lm
+$(LIBDIR)/librnnlm.so: RnnLMPy-binding.o util.o
+	$(CC) -Wl,-soname,librnnlm.so.0 util.o -shared -lfst RnnLMPy-binding.o \
+	rnnlmlib.o -I. -o $(LIBDIR)/librnnlm.so -O3 -fPIC -funroll-loops -ffast-math -lm util.o
 	cd $(LIBDIR); ln -s librnnlm.so librnnlm.so.0; cd -;
 
 $(LIBDIR)/librnnlm.dylib: RnnLMPy-binding.o
-	$(CC) -Wl,-install_name,librnnlm.so -shared -lc -lfst RnnLMPy-binding.o \
+	$(CC) -Wl,-install_name,librnnlm.so -shared -lc -lfst RnnLMPy-binding.o util.o \
 	rnnlmlib.o -I. -o $(LIBDIR)/librnnlm.dylib -O3 -fPIC -funroll-loops \
 	-ffast-math -lm -lpython$(VERSION)
 
 RnnLMPy-binding.o: RnnLMPy-binding.cc
-	$(CC) -O3 -fPIC -funroll-loops -ffast-math -lm -I. -I3rdparty/rnnlm -I$(PYTHON_H) -c $(<) -o $(@)
+	$(CC) -O3 -fPIC -funroll-loops -ffast-math -lm -I. -I3rdparty/utfcpp -I3rdparty/sparsehash -I3rdparty/rnnlm -I$(PYTHON_H) -c $(<) -o $(@)
 
 RnnLMPy-binding.cc: rnnlmlib.o
 	python rnnlm-module.py > RnnLMPy-binding.cc
 
 rnnlmlib.o : 3rdparty/rnnlm/rnnlmlib.cpp
-	$(CC) -O3 -fPIC -funroll-loops -ffast-math -lm -fPIC -w -c 3rdparty/rnnlm/rnnlmlib.cpp
+	$(CC) -O3 -fPIC -I3rdparty/sparsehash -I. -I3rdparty/utfcpp -I3rdparty/utfcpp  -lfst -lfst -lm -ldl -funroll-loops -ffast-math -lm -fPIC -w -c 3rdparty/rnnlm/rnnlmlib.cpp
 
 #G2P bindings
 phonetisaurus-binding: $(PYLIB)/Phonetisaurus.so

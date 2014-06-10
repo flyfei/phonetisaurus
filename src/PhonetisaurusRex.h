@@ -101,7 +101,7 @@ int LoadClusters (const SymbolTable* syms, SymbolMap12M* clusters,
 
 template <class Arc>
 void Entry2FSA (const vector<int>& word, VectorFst<Arc>* fsa, size_t maxlen,
-                const SymbolMapM21& invmap) {
+                const SymbolMapM21& invmap, bool superfinal=false) {
   fsa->AddState ();
   fsa->SetStart (0);
   size_t j;
@@ -121,7 +121,14 @@ void Entry2FSA (const vector<int>& word, VectorFst<Arc>* fsa, size_t maxlen,
     fsa->AddState ();
 
   }
-  fsa->SetFinal (word.size(), Arc::Weight::One());
+
+  if (superfinal) {
+    fsa->AddState();
+    fsa->AddArc (word.size(), Arc (0, 0, Arc::Weight::One(), word.size()+1));
+    fsa->SetFinal (word.size()+1, Arc::Weight::One());
+  } else {
+    fsa->SetFinal (word.size(), Arc::Weight::One());
+  }
 }
 
 struct Path {

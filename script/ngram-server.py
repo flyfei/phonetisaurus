@@ -63,7 +63,7 @@ def FormatARPAResult (response, sent) :
 
 def FormatRnnLMResult (response, words) :
     result = {}
-    result['scores'] = [(w,s) for w,s in zip (words, response.word_probs)]
+    result['scores'] = [(w,s) for w,s in zip (response.words, response.word_probs)]
     result['total']  = response.sent_prob
 
     return result

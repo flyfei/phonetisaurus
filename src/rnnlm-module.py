@@ -47,6 +47,7 @@ struct = mod.add_struct ('UttResult')
 struct.add_constructor ([])
 struct.add_instance_attribute ('sent_prob', 'double')
 struct.add_instance_attribute ('word_probs', 'std::vector<double>')
+struct.add_instance_attribute ('words', 'std::vector<std::string>')
 
 mod.add_include ('"RnnLMPy.h"')
 klass = mod.add_class ('RnnLMPy')
