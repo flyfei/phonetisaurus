@@ -87,6 +87,8 @@ int main (int argc, char* argv[]) {
   
   //SymbolTable* syms = SymbolTable::ReadText (argv[2]);
   RnnLMPy rnnlm (argv[2]);
+  int nbest = atoi (argv[4]);
+  float beam = atof (argv[5]);
 
   Token t (0, 0.0, NULL);
   typedef tr1::unordered_set<Token, TokenHash, TC> USet;
@@ -98,7 +100,7 @@ int main (int argc, char* argv[]) {
   uset.insert (t);
   vector<Token> last;
 
-  while (!heap.Empty() && last.size() < 1) {
+  while (!heap.Empty() && last.size() < nbest) {
     //fst->Final (heap.Top().state_) == StdArc::Weight::Zero()) {
     //if (last.size() > 3)
     //  break;
@@ -111,12 +113,17 @@ int main (int argc, char* argv[]) {
       string label = isyms->Find (arc.ilabel);
       if (arc.ilabel > 1) {
 	vector<int> chunks = rnnlm.GetJointVocab (label);
+	float best_chunk = -999;
 	for (int i = 0; i < chunks.size(); i++) {
 	  string chunk = rnnlm.GetString (chunks[i]);
 	  vector<string> history = titer->history_;
 	  history.push_back (chunk);
 
-	  UttResult result = rnnlm.EvaluateSentence (history);	
+	  UttResult result = rnnlm.EvaluateSentence (history);
+	  if (result.sent_prob > best_chunk)
+	    best_chunk = result.sent_prob;
+	  else if (abs (best_chunk - result.sent_prob) > beam)
+	    continue;
 	  Token q (arc.nextstate, 
 		   -1 * result.sent_prob,
 		   &(*titer), 
@@ -154,13 +161,15 @@ int main (int argc, char* argv[]) {
     }
   }
 
-  vector<Token> vv;
-  Token* tp = &last[0];
+  for (int j = 0; j < last.size(); j++) {
+    vector<Token> vv;
+    Token* tp = &last[j];
 
-  cout << tp->weight_  << "\t";
-  for (int i = 0; i < tp->history_.size(); i++)
-    cout << tp->history_[i] << ((i == tp->history_.size()) ? "" : " ");
-  cout << endl;
+    cout << tp->weight_  << "\t";
+    for (int i = 0; i < tp->history_.size(); i++)
+      cout << tp->history_[i] << ((i == tp->history_.size()) ? "" : " ");
+    cout << endl;
+  }
   /*
   while (tp->prev_ != NULL) {
     vv.push_back(*tp);
